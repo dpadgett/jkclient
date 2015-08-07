@@ -3,6 +3,11 @@
 #ifndef __CG_PUBLIC_H
 #define __CG_PUBLIC_H
 
+//#define TEAM_GREEN
+#ifdef TEAM_GREEN
+#undef TEAM_GREEN
+#endif
+
 #define	CMD_BACKUP			64	
 #define	CMD_MASK			(CMD_BACKUP - 1)
 // allow a lot of command backups for very fast systems

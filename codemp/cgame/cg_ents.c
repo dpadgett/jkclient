@@ -1875,6 +1875,7 @@ qboolean CG_GreyItem(int type, int tag, int plSide)
 CG_Item
 ==================
 */
+qboolean CG_WorldCoordToScreenCoordFloat(vec3_t worldCoord, float *x, float *y);
 static void CG_Item( centity_t *cent ) {
 	refEntity_t		ent;
 	entityState_t	*es;

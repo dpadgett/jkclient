@@ -773,7 +773,11 @@ const char *CG_TeamName(int team)
 	if (team==TEAM_RED)
 		return "RED";
 	else if (team==TEAM_BLUE)
+#ifdef TEAM_GREEN
+		return "GREEN";
+#else
 		return "BLUE";
+#endif
 	else if (team==TEAM_SPECTATOR)
 		return "SPECTATOR";
 	return "FREE";
@@ -1945,6 +1949,10 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 			// show icon and name on status bar
 			if ( es->number == cg.snap->ps.clientNum ) {
 				CG_ItemPickup( index );
+			}
+
+			if ( item->giType == IT_POWERUP && cg_entities[es->eventParm].currentState.modelindex2 != 1 ) {
+				cg.powerupRespawnTime[item->giTag] = (cg.time - cgs.levelStartTime) + 120 * 1000;
 			}
 		}
 		break;

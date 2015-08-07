@@ -3,6 +3,8 @@
 // cg_main.c -- initialization and primary entry point for cgame
 #include "cg_local.h"
 
+#include "cg_threads.h"
+
 #include "../ui/ui_shared.h"
 // display context for new ui stuff
 displayContextDef_t cgDC;
@@ -13,6 +15,7 @@ displayContextDef_t cgDC;
 
 extern int cgSiegeRoundState;
 extern int cgSiegeRoundTime;
+extern qboolean BG_FileExists(const char *fileName);
 /*
 Ghoul2 Insert Start
 */
@@ -113,6 +116,8 @@ vec4_t colorTable[CT_MAX] =
 int cgWeatherOverride = 0;
 
 int forceModelModificationCount = -1;
+int friendModelModificationCount = -1;
+int enemyModelModificationCount = -1;
 
 void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum );
 void CG_Shutdown( void );
@@ -139,6 +144,7 @@ static void C_ImpactMark(void);
 #else
 #define MAX_MISC_ENTS	4000
 #endif
+#define MAX_LOC_ENTS	500
 
 //static refEntity_t	*MiscEnts = 0;
 //static float		*Radius = 0;
@@ -178,6 +184,14 @@ qboolean CG_NoUseableForce(void)
 	return qtrue;
 }
 
+#define EXE
+#ifdef EXE
+int main()
+{
+	return 0;
+}
+#endif
+
 /*
 ================
 vmMain
@@ -187,10 +201,55 @@ This must be the very first function compiled into the .q3vm file
 ================
 */
 #include "../namespace_begin.h"
+#ifdef GNUC
+__declspec(dllexport)
+#endif
 int vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, int arg7, int arg8, int arg9, int arg10, int arg11  ) {
-
+#ifdef WEB_DOWNLOAD
+	static int oa0, oa1, oa2;
+	if ( cgs.is_downloading ) {
+		if ( command == CG_DRAW_ACTIVE_FRAME ) {
+			cg.time = arg0;
+			cgDC.realTime = cg.time;
+			cg.demoPlayback = (qboolean)arg2;
+			// update cvars
+			CG_UpdateCvars();
+			/*if(cg.svCvarCount > 0) {
+				if(CG_BackupConfig()) {
+					CG_ManageSVCVars();
+				}
+				CG_RestoreConfig();
+			}*/
+			CG_DrawInformation();
+		}
+		if ( cgs.is_downloading == 2 ) {
+//			CG_InitThreads();
+//			ListFiles();
+//			cgs.is_downloading = 1;
+			CG_Printf("Download completed successfully.\n");
+			cgs.is_downloading = 1;
+			trap_Cvar_Set("fs_game", "base");
+	        //trap_SendConsoleCommand("donedl\n");
+	        trap_SendClientCommand("donedl");
+			//trap_SendConsoleCommand("reconnect\n");
+		} else if ( cgs.is_downloading == 3 ) {
+			extern int curl_res;
+			CG_Printf("There was a problem retrieving files referenced by the server - cURL result %d.  Attempting load anyways...\n", curl_res);
+			cgs.is_downloading = 0;
+//			trap_Cvar_Set("fs_game", "base");
+//	        trap_SendConsoleCommand("donedl\n");
+			CG_Init( oa0, oa1, oa2 );
+		}
+		return 0;
+	}
+#endif
 	switch ( command ) {
 	case CG_INIT:
+//		EnableStackTrace();
+#ifdef WEB_DOWNLOAD
+		CG_InitThreads();
+		if ( ListFiles() != 0 ) { oa0 = arg0; oa1 = arg1; oa2 = arg2; return -1; }
+#endif
 		CG_Init( arg0, arg1, arg2 );
 		return 0;
 	case CG_SHUTDOWN:
@@ -358,6 +417,14 @@ int vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4, int a
 	return -1;
 }
 #include "../namespace_end.h"
+
+typedef struct {
+	vec3_t	origin;
+	char	name[MAX_STRING_CHARS];
+} locEntity_t;
+static locEntity_t	LocEnts[MAX_LOC_ENTS]; //statically allocated for now.
+
+static int			NumLocEnts = 0;
 
 static int C_PointContents(void)
 {
@@ -871,6 +938,26 @@ vmCvar_t	cg_showVehBounds;
 vmCvar_t	ui_myteam;
 
 vmCvar_t	cg_snapshotTimeout;
+vmCvar_t	cg_noAutoDemo;
+vmCvar_t	cg_demoData;
+vmCvar_t	cg_demoName;
+vmCvar_t	cg_newHud;
+
+vmCvar_t	cg_drawSpeed;
+vmCvar_t	cg_drawAccel;
+vmCvar_t	cg_fixDemoScores;
+vmCvar_t	cg_forceTeamModel;
+vmCvar_t	cg_friendModel;
+vmCvar_t	cg_enemyModel;
+
+vmCvar_t	cg_disableJPMOTD;
+
+vmCvar_t	cl_checksumProblem;
+vmCvar_t	cl_wwwDownload;
+vmCvar_t	cl_triedDownload;
+vmCvar_t	cl_wwwBaseUrl;
+vmCvar_t	cg_drawFlagDrop;
+vmCvar_t	cg_drawRespawnTimer;
 
 typedef struct {
 	vmCvar_t	*vmCvar;
@@ -1041,15 +1128,35 @@ static cvarTable_t cvarTable[] = { // bk001129
 
 	{ &ui_myteam, "ui_myteam", "0", CVAR_ROM|CVAR_INTERNAL},
 	{ &cg_snapshotTimeout, "cg_snapshotTimeout", "10", CVAR_ARCHIVE },
+	{ &cg_noAutoDemo, "cg_noAutoDemo", "0", CVAR_ARCHIVE | CVAR_NORESTART },
+	{ &cg_demoData, "cg_demoData", "", CVAR_NORESTART | CVAR_INTERNAL },
+	{ &cg_demoName, "cg_demoName", "", CVAR_NORESTART | CVAR_INTERNAL },
+	{ &cg_newHud, "cg_newHud", "0", CVAR_ARCHIVE },
+	{ &cg_drawSpeed, "cg_drawSpeed", "0", CVAR_ARCHIVE },
+	{ &cg_drawAccel, "cg_drawAccel", "0", CVAR_ARCHIVE },
+	{ &cg_fixDemoScores, "cg_fixDemoScores", "0", CVAR_ARCHIVE },
+	{ &cg_forceTeamModel, "cg_forceTeamModel", "0", CVAR_ARCHIVE },
+	{ &cg_friendModel, "cg_friendModel", "", CVAR_ARCHIVE },
+	{ &cg_enemyModel, "cg_enemyModel", "", CVAR_ARCHIVE },
+	
+	{ &cg_disableJPMOTD, "cg_disableJPMOTD", "1", CVAR_ARCHIVE },
 
 //	{ &cg_pmove_fixed, "cg_pmove_fixed", "0", CVAR_USERINFO | CVAR_ARCHIVE }
 /*
 Ghoul2 Insert Start
 */
 	{ &cg_debugBB, "debugBB", "0", 0},
+
 /*
 Ghoul2 Insert End
 */
+
+	{ &cl_wwwDownload, "cl_wwwDownload", "1", CVAR_ARCHIVE },
+	{ &cl_checksumProblem, "cl_checksumProblem", "0", CVAR_ROM },
+	{ &cl_triedDownload, "cl_triedDownload", "0", CVAR_ROM },
+	{ &cl_wwwBaseUrl, "cl_wwwBaseUrl", "http://pug.jactf.com/mapdl.php/", CVAR_ARCHIVE },
+	{ &cg_drawFlagDrop, "cg_drawFlagDrop", "1", CVAR_ARCHIVE },
+	{ &cg_drawRespawnTimer, "cg_drawRespawnTimer", "1", CVAR_ARCHIVE },
 };
 
 static int  cvarTableSize = sizeof( cvarTable ) / sizeof( cvarTable[0] );
@@ -1074,6 +1181,8 @@ void CG_RegisterCvars( void ) {
 	cgs.localServer = atoi( var );
 
 	forceModelModificationCount = cg_forceModel.modificationCount;
+	friendModelModificationCount = cg_friendModel.modificationCount;
+	enemyModelModificationCount = cg_enemyModel.modificationCount;
 
 	trap_Cvar_Register(NULL, "model", DEFAULT_MODEL, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "forcepowers", DEFAULT_FORCEPOWERS, CVAR_USERINFO | CVAR_ARCHIVE );
@@ -1158,6 +1267,7 @@ void CG_UpdateCvars( void ) {
 	int			i;
 	cvarTable_t	*cv;
 	static int drawTeamOverlayModificationCount = -1;
+	static team_t	oldTeam = -1; //TEAM_SPECTATOR;
 
 	for ( i = 0, cv = cvarTable ; i < cvarTableSize ; i++, cv++ ) {
 		trap_Cvar_Update( cv->vmCvar );
@@ -1183,6 +1293,29 @@ void CG_UpdateCvars( void ) {
 	if ( forceModelModificationCount != cg_forceModel.modificationCount ) {
 		forceModelModificationCount = cg_forceModel.modificationCount;
 		CG_ForceModelChange();
+	}
+	
+	// if friend model changed
+	if ( friendModelModificationCount != cg_friendModel.modificationCount ) {
+		friendModelModificationCount = cg_friendModel.modificationCount;
+		CG_ForceModelChange();
+	}
+	
+	// if enemy model changed
+	if ( enemyModelModificationCount != cg_enemyModel.modificationCount ) {
+		enemyModelModificationCount = cg_enemyModel.modificationCount;
+		CG_ForceModelChange();
+	}
+	
+	// if team changed, update forceTeamModel data as if forceModel had changed
+	if( cg.snap && cg_forceTeamModel.integer != 0 )
+	{
+		if( cg.snap->ps.persistant[PERS_TEAM] != oldTeam )
+		{
+			void CG_ForceModelChange( void );
+			oldTeam = cg.snap->ps.persistant[PERS_TEAM];
+			CG_ForceModelChange( );
+		}
 	}
 }
 
@@ -1972,7 +2105,9 @@ static void CG_RegisterGraphics( void ) {
 	CG_LoadingString( cgs.mapname );        
 
 //#ifndef _XBOX
-	trap_R_LoadWorldMap( cgs.mapname );
+	if( BG_FileExists( cgs.mapname ) )
+		trap_R_LoadWorldMap( cgs.mapname );
+	else trap_R_LoadWorldMap( "maps/mp/ffa1.bsp" );
 //#endif
 
 	// precache status bar pics
@@ -2176,6 +2311,8 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.binocularTri			= trap_R_RegisterShader( "gfx/2d/binTopTri" );
 	cgs.media.binocularStatic		= trap_R_RegisterShader( "gfx/2d/binocularWindow" );
 	cgs.media.binocularOverlay		= trap_R_RegisterShader( "gfx/2d/binocularNumOverlay" );
+	
+	cgs.media.tint					= trap_R_RegisterShaderNoMip( "gfx/2d/tint" );
 
 	cg.loadLCARSStage = 5;
 
@@ -2537,6 +2674,30 @@ const char *CG_ConfigString( int index ) {
 		CG_Error( "CG_ConfigString: bad index: %i", index );
 	}
 	return cgs.gameState.stringData + cgs.gameState.stringOffsets[ index ];
+}
+
+/*
+====================
+CG_GetConfigString
+====================
+*/
+qboolean CG_GetConfigString(int index, char *buf, int size) {
+	int		offset;
+
+	if (index < 0 || index >= MAX_CONFIGSTRINGS)
+		return qfalse;
+
+	offset = cgs.gameState.stringOffsets[index];
+	if (!offset) {
+		if( size ) {
+			buf[0] = 0;
+		}
+		return qfalse;
+	}
+
+	Q_strncpyz(buf, cgs.gameState.stringData+offset, size);
+ 
+	return qtrue;
 }
 
 //==================================================================
@@ -3385,6 +3546,7 @@ typedef struct cgSpawnEnt_s
 	int			onlyFogHere;
 	float		fogstart;
 	float		radarrange;
+	char		*message;
 } cgSpawnEnt_t;
 
 #define	CGFOFS(x) ((int)&(((cgSpawnEnt_t *)0)->x))
@@ -3405,6 +3567,7 @@ BG_field_t cg_spawnFields[] =
 	{"onlyfoghere", CGFOFS(onlyFogHere), F_INT},
 	{"fogstart", CGFOFS(fogstart), F_FLOAT},
 	{"radarrange", CGFOFS(radarrange), F_FLOAT},
+	{"message", CGFOFS(message), F_LSTRING},
 	{NULL}
 };
 
@@ -3507,6 +3670,62 @@ void CG_CreateModelFromSpawnEnt(cgSpawnEnt_t *ent)
 	ScaleModelAxis(RefEnt);
 }
 
+char *CG_StringForLocation( vec3_t origin )
+{
+	static char		string[2][32000];	// in case va is called by nested functions
+	static int		index = 0;
+	char	*buf;
+	vec3_t tmp;
+	float nearest;
+	int i, nIdx = 0;
+
+	buf = string[index & 1];
+	*buf = 0;
+	index++;
+	
+	if( NumLocEnts == 0 ) return buf;
+	
+	// search through locations for nearest ent
+	VectorSubtract( origin, LocEnts[0].origin, tmp );
+	nearest = VectorLength( tmp );
+	for( i = 0; i < NumLocEnts; i++ )
+	{
+		VectorSubtract( origin, LocEnts[i].origin, tmp );
+		if( nearest > VectorLength( tmp ) )
+		{
+			nIdx = i;
+			nearest = VectorLength( tmp );
+		}
+	}
+	
+	Q_strncpyz( buf, LocEnts[nIdx].name, 32000 );
+	return buf;
+}
+
+//create a new cgame-only model
+void CG_CreateLocationFromSpawnEnt(cgSpawnEnt_t *ent)
+{
+	locEntity_t	*lent;
+
+	if (NumLocEnts >= MAX_LOC_ENTS)
+	{
+		Com_Error(ERR_DROP, "Too many target_location's on level, ask a programmer to raise the limit (currently %i), or take some out.", MAX_LOC_ENTS);
+		return;
+	}
+	
+	if (!ent)
+	{
+		Com_Error(ERR_DROP, "target_location with no ent.");
+		return;
+	}
+
+	lent = &LocEnts[NumLocEnts++];
+
+	memset(lent, 0, sizeof(locEntity_t));
+	VectorCopy( ent->origin, lent->origin );
+	Q_strncpyz( lent->name, ent->message, sizeof( lent->name ) );
+}
+
 /*
 ====================
 CG_AddSpawnVarToken
@@ -3531,6 +3750,90 @@ char *CG_AddSpawnVarToken( const char *string )
 }
 
 /*
+===============
+SpawnLocations
+===============
+*/
+qboolean SpawnLocations(void) {
+	char			*com_token;  
+	static char		*pStr = 0;
+	static char		buffer[16384] = "";
+	char			keyname[MAX_TOKEN_CHARS], value[MAX_TOKEN_CHARS];  
+	char			filename[MAX_QPATH];
+	int				len;
+	fileHandle_t	f;
+	
+	if( !pStr )
+	{
+		Q_strncpyz( filename, cgs.mapname, sizeof( filename ) );
+		COM_StripExtension( filename, filename );
+		Com_sprintf( filename, sizeof(filename), "%s.loc", filename );
+		//trap_FS_FOpenFile( filename, &f, FS_READ );
+		if ((len = trap_FS_FOpenFile( filename, &f, FS_READ )) < 0) {
+			CG_Printf( "^3SpawnLocations: (%s) file does not exist or too small^7\n", filename );
+			return qfalse;
+		}
+		
+		if (len >= sizeof(buffer)) {
+			CG_Printf( "^3SpawnLocations: (%s) file is too big\n", filename );
+			return qfalse;
+		}
+		
+		memset( buffer, 0, sizeof(buffer) );
+		trap_FS_Read( buffer, len, f );
+		
+		trap_FS_FCloseFile( f );
+		
+		pStr = buffer;
+	}
+
+	// parse the opening brace
+	com_token = COM_ParseExt( &pStr, qtrue );
+	if (!com_token || !com_token[0]) {
+		// end of spawn string
+		return qfalse;
+	}
+	if ( com_token[0] != '{' ) {
+		CG_Error( "SpawnLocations: (%s) found %s when expecting {", filename, com_token );
+	}
+
+	// go through all the key / value pairs
+	while ( 1 ) {	
+		// parse key
+		com_token = COM_ParseExt( &pStr, qtrue );
+		if ( !com_token || !com_token[0] ) {
+			CG_Error( "SpawnLocations: (%s) EOF without closing brace", filename );
+		}
+		Q_strncpyz( keyname, com_token, sizeof(keyname) );
+		if ( keyname[0] == '}' ) {
+			break;
+		}
+		
+		// parse value	
+		com_token = COM_ParseExt( &pStr, qtrue );
+		if (!com_token || !com_token[0]) {
+			CG_Error( "SpawnLocations: (%s) EOF without closing brace", filename );
+		}
+		Q_strncpyz( value, com_token, sizeof(value) );
+
+		if ( com_token[0] == '}' ) {
+			CG_Error( "SpawnLocations: (%s) closing brace without data", filename );
+		}
+		if ( cg_numSpawnVars == MAX_SPAWN_VARS ) {
+			CG_Error( "SpawnLocations: (%s) MAX_SPAWN_VARS", filename );
+		}
+		/*if ( !Q_stricmp(keyname, "classname") && Q_stricmp(value, "target_location") ) {
+			G_Error( "SpawnLocations: (%s) Classname \"%s\" not allowed", filename, value );
+		}*/
+		cg_spawnVars[ cg_numSpawnVars ][0] = CG_AddSpawnVarToken( keyname );
+		cg_spawnVars[ cg_numSpawnVars ][1] = CG_AddSpawnVarToken( value );
+		cg_numSpawnVars++;
+	}
+	
+	return qtrue;
+}
+
+/*
 ====================
 CG_ParseSpawnVars
 
@@ -3549,7 +3852,8 @@ qboolean CG_ParseSpawnVars( void )
 	// parse the opening brace
 	if ( !trap_GetEntityToken( com_token, sizeof( com_token ) ) ) {
 		// end of spawn string
-		return qfalse;
+		// try parsing additional location info
+		return SpawnLocations();
 	}
 	if ( com_token[0] != '{' ) {
 		CG_Error( "CG_ParseSpawnVars: found %s when expecting {",com_token );
@@ -3647,6 +3951,10 @@ void CG_SpawnCGameEntFromVars(void)
 		{ //might as well parse this thing cgame side for the extra info I want out of it
 			CG_CreateWeatherZoneFromSpawnEnt(&ent);
 		}
+		else if (!Q_stricmp(ent.classname, "target_location"))
+		{ // teh hax XD
+			CG_CreateLocationFromSpawnEnt(&ent);
+		}
 	}
 
 	//reset the string pool for the next entity, if there is one
@@ -3692,6 +4000,8 @@ void CG_PmoveClientPointerUpdate();
 void WP_SaberLoadParms( void );
 void BG_VehicleLoadParms( void );
 #include "../namespace_end.h"
+
+qboolean fakeMap = qfalse;
 
 /*
 =================
@@ -3746,6 +4056,7 @@ Ghoul2 Insert End
 	//	and even if/when they get overwritten they'll be legalised by the menu asset parser :-)
 //	CG_LoadFonts();
 	cgDC.Assets.qhSmallFont  = trap_R_RegisterFont("ocr_a");
+	cgDC.Assets.qhHudFont = trap_R_RegisterFont("hud_font");
 	cgDC.Assets.qhMediumFont = trap_R_RegisterFont("ergoec");
 	cgDC.Assets.qhBigFont = cgDC.Assets.qhMediumFont;
 
@@ -3875,7 +4186,13 @@ Ghoul2 Insert End
 	// load the new map
 //	CG_LoadingString( "collision map" );
 
-	trap_CM_LoadMap( cgs.mapname, qfalse );
+	if( BG_FileExists( cgs.mapname ) )
+		trap_CM_LoadMap( cgs.mapname, qfalse );
+	else
+	{
+		fakeMap = qtrue;
+		trap_CM_LoadMap( "maps/mp/ffa1.bsp", qfalse );
+	}
 
 	String_Init();
 
@@ -3992,6 +4309,8 @@ Called before every level change or subsystem restart
 */
 void CG_Shutdown( void ) 
 {
+	extern char demoName[MAX_STRING_CHARS];
+	
 	BG_ClearAnimsets(); //free all dynamic allocations made through the engine
 
     CG_DestroyAllGhoul2();
@@ -4013,6 +4332,13 @@ void CG_Shutdown( void )
 
 	// some mods may need to do cleanup work here,
 	// like closing files or archiving session data
+	trap_Cvar_Set( "cg_demoName", demoName );
+	if ( !cg_noAutoDemo.integer )
+	{
+		extern void CG_FixDemo_f(void);
+		trap_SendConsoleCommand( "stoprecord;fixdemo;" );
+		CG_FixDemo_f();
+	}
 }
 
 /*
@@ -4167,4 +4493,27 @@ void CG_PrevInventory_f(void)
 		cg.itemSelect = bg_itemlist[cg.snap->ps.stats[STAT_HOLDABLE_ITEM]].giTag;
 		cg.invenSelectTime = cg.time;
 	}
+}
+
+// Standard naming for screenshots/demos
+char *CG_generateFilename(void)
+{
+	qtime_t ct;
+	const char *pszServerInfo = CG_ConfigString(CS_SERVERINFO);
+	
+	trap_RealTime(&ct);
+	return va("%d-%02d-%02d-%02d%02d%02d-%s",
+								1900+ct.tm_year, ct.tm_mon+1,ct.tm_mday,
+								ct.tm_hour, ct.tm_min, ct.tm_sec,
+								COM_SkipPath(Info_ValueForKey(pszServerInfo, "mapname")));
+}
+
+char demoName[MAX_STRING_CHARS];
+
+// Dynamically names a demo and sets up the recording
+void CG_autoRecord_f( void ) {
+	char val[MAX_STRING_CHARS];
+	Q_strncpyz( demoName, CG_generateFilename(), sizeof( demoName ) );
+	trap_Cvar_VariableStringBuffer( "g_synchronousclients", val, sizeof( val ) );
+	trap_SendConsoleCommand( va( "set g_synchronousclients 1;record %s;set g_synchronousclients %s\n", demoName, val ) );
 }

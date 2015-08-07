@@ -4,6 +4,7 @@
 #include "tr_types.h"
 #include "../game/bg_public.h"
 #include "cg_public.h"
+//#include "../ui/ui_shared.h"
 
 // The entire cgame module is unloaded and reloaded on each level change,
 // so there is NO persistant data between levels on the client side.
@@ -86,6 +87,11 @@
 
 #define DEFAULT_REDTEAM_NAME		"Empire"
 #define DEFAULT_BLUETEAM_NAME		"Rebellion"
+
+typedef struct {
+	char remoteurl[MAX_CVAR_VALUE_STRING];
+	char localfile[144];
+} cg_downloadInfo_t;
 
 typedef enum {
 	FOOTSTEP_STONEWALK,
@@ -1011,6 +1017,7 @@ Ghoul2 Insert End
 	int					snapshotTimeoutTime;
 #endif
 	
+	long				powerupRespawnTime[MAX_POWERUPS];
 } cg_t;
 
 #define MAX_TICS	14
@@ -1373,6 +1380,9 @@ typedef struct {
 	qhandle_t	bdecal_saberglow;
 	qhandle_t	bdecal_burn1;
 	qhandle_t	mSaberDamageGlow;
+	
+	// tint
+	qhandle_t	tint;
 
 	// For vehicles only now
 	sfxHandle_t	noAmmoSound;
@@ -1574,6 +1584,7 @@ typedef struct {
 	int				duelist3health;
 
 	int				redflag, blueflag;		// flag status from configstrings
+	int				redflagReturnTime, blueflagReturnTime;
 	int				flagStatus;
 
 	qboolean  newHud;
@@ -1605,6 +1616,12 @@ typedef struct {
 
 	// effects
 	cgEffects_t		effects;
+
+	int is_downloading;
+	double dltotal;
+	double dlnow;
+	char dlname[MAX_STRING_CHARS];
+	double dltime;
 
 } cgs_t;
 
@@ -1796,6 +1813,23 @@ extern  vmCvar_t		cg_recordSPDemoName;
 
 extern	vmCvar_t		ui_myteam;
 extern  vmCvar_t		cg_snapshotTimeout;
+extern	vmCvar_t		cg_noAutoDemo;
+extern	vmCvar_t		cg_demoData;
+extern	vmCvar_t		cg_newHud;
+extern	vmCvar_t		cg_fixDemoScores;
+extern	vmCvar_t 		cg_forceTeamModel;
+extern	vmCvar_t 		cg_friendModel;
+extern	vmCvar_t 		cg_enemyModel;
+
+extern	vmCvar_t		cg_drawSpeed;
+extern	vmCvar_t		cg_drawAccel;
+extern	vmCvar_t		cg_disableJPMOTD;
+extern	vmCvar_t		cl_checksumProblem;
+extern	vmCvar_t		cl_wwwDownload;
+extern	float			myAccel;
+extern	vmCvar_t		cg_drawFlagDrop;
+extern	vmCvar_t		cg_drawRespawnTimer;
+
 /*
 Ghoul2 Insert Start
 */
@@ -1834,6 +1868,7 @@ void CG_NextInventory_f(void);
 void CG_PrevInventory_f(void);
 void CG_NextForcePower_f(void);
 void CG_PrevForcePower_f(void);
+void CG_autoRecord_f( void );
 
 //
 // cg_view.c
@@ -2106,6 +2141,7 @@ void CG_DrawOldTourneyScoreboard( void );
 //
 qboolean CG_ConsoleCommand( void );
 void CG_InitConsoleCommands( void );
+int ListFiles( void );
 
 //
 // cg_servercmds.c
@@ -2176,6 +2212,7 @@ void		trap_FS_Read( void *buffer, int len, fileHandle_t f );
 void		trap_FS_Write( const void *buffer, int len, fileHandle_t f );
 void		trap_FS_FCloseFile( fileHandle_t f );
 int			trap_FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize );
+int			trap_RealTime(qtime_t *qtime);
 
 // add commands to the local console as if they were typed in
 // for map changing, etc.  The command is not executed immediately,

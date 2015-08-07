@@ -70,7 +70,8 @@ void CG_BuildSolidList( void ) {
 			continue;
 		}
 
-		if ( cent->nextState.solid ) {
+		if ( cent->nextState.solid && !(
+			 ent->eType == ET_MISSILE && ent->owner == snap->ps.clientNum ) ) {
 			cg_solidEntities[cg_numSolidEntities] = cent;
 			cg_numSolidEntities++;
 			continue;
@@ -245,8 +246,9 @@ static void CG_ClipMoveToEntities ( const vec3_t start, const vec3_t mins, const
 		}
 
 		if ( ent->solid == SOLID_BMODEL ) {
+			extern qboolean fakeMap;
 			// special value for bmodel
-			cmodel = trap_CM_InlineModel( ent->modelindex );
+			if( !fakeMap ) cmodel = trap_CM_InlineModel( ent->modelindex );
 			VectorCopy( cent->lerpAngles, angles );
 			BG_EvaluateTrajectory( &cent->currentState.pos, cg.physicsTime, origin );
 		} else {
@@ -396,6 +398,7 @@ int		CG_PointContents( const vec3_t point, int passEntityNum ) {
 	centity_t	*cent;
 	clipHandle_t cmodel;
 	int			contents;
+	extern qboolean fakeMap;
 
 	contents = trap_CM_PointContents (point, 0);
 
@@ -412,7 +415,7 @@ int		CG_PointContents( const vec3_t point, int passEntityNum ) {
 			continue;
 		}
 
-		cmodel = trap_CM_InlineModel( ent->modelindex );
+		if( !fakeMap ) cmodel = trap_CM_InlineModel( ent->modelindex );
 		if ( !cmodel ) {
 			continue;
 		}
@@ -671,9 +674,10 @@ static void CG_TouchTriggerPrediction( void ) {
 	int			i;
 	trace_t		trace;
 	entityState_t	*ent;
-	clipHandle_t cmodel;
+	clipHandle_t cmodel = NULL;
 	centity_t	*cent;
 	qboolean	spectator;
+	extern qboolean fakeMap;
 
 	// dead clients don't activate triggers
 	if ( cg.predictedPlayerState.stats[STAT_HEALTH] <= 0 ) {
@@ -699,7 +703,7 @@ static void CG_TouchTriggerPrediction( void ) {
 			continue;
 		}
 
-		cmodel = trap_CM_InlineModel( ent->modelindex );
+		if( !fakeMap ) cmodel = trap_CM_InlineModel( ent->modelindex );
 		if ( !cmodel ) {
 			continue;
 		}

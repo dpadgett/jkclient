@@ -81,7 +81,7 @@ void CG_SetInitialSnapshot( snapshot_t *snap ) {
 	int				i;
 	centity_t		*cent;
 	entityState_t	*state;
-
+	
 	cg.snap = snap; 
 
 	if ((cg_entities[snap->ps.clientNum].ghoul2 == NULL) && trap_G2_HaveWeGhoul2Models(cgs.clientinfo[snap->ps.clientNum].ghoul2Model))
@@ -105,6 +105,10 @@ void CG_SetInitialSnapshot( snapshot_t *snap ) {
 	// what the server has indicated the current weapon is
 	CG_Respawn();
 
+	// init force selection to SPEED
+	cg.forceSelect = cg.snap->ps.fd.forcePowerSelected = FP_SPEED;
+	trap_SetUserCmdValue( cg.weaponSelect, cg.zoomSensitivity, 0.0f, 0.0f, 0.0f, cg.forceSelect, cg.itemSelect, qfalse );
+	
 	for ( i = 0 ; i < cg.snap->numEntities ; i++ ) {
 		state = &cg.snap->entities[ i ];
 		cent = &cg_entities[ state->number ];
@@ -118,6 +122,12 @@ void CG_SetInitialSnapshot( snapshot_t *snap ) {
 
 		// check for events
 		CG_CheckEvents( cent );
+	}
+	
+	if ( !cg_noAutoDemo.integer && !cg.demoPlayback )
+	{
+		CG_autoRecord_f( );
+		trap_SendConsoleCommand( "fixdemo;" );
 	}
 }
 
@@ -216,6 +226,32 @@ static void CG_SetNextSnap( snapshot_t *snap ) {
 	//cg_entities[ cg.snap->ps.clientNum ].interpolate = qtrue;
 	//No longer want to do this, as the cg_entities[clnum] and cg.predictedPlayerEntity are one in the same.
 
+	if (0) {
+		CG_Printf("Snapshot transition - delta %d, time %d to %d - missing delta %d, command time %d\n", cg.nextSnap->serverTime - cg.snap->serverTime, cg.snap->serverTime, cg.nextSnap->serverTime,
+			cg.nextSnap->serverTime - cg.nextSnap->ps.commandTime, cg.nextSnap->ps.commandTime);
+		{
+			vec3_t diff;
+			float actualVelocity, expectedVelocity;
+			VectorSubtract(cg.nextSnap->ps.origin, cg.snap->ps.origin, diff);
+			//diff[2] = 0; // only do XYVel
+			actualVelocity = VectorLength(diff) * 1000 / (cg.nextSnap->serverTime - cg.snap->serverTime);
+			expectedVelocity = VectorLength(cg.snap->ps.velocity);
+			CG_Printf("Velocity: %f\nActual velocity: %f\n", expectedVelocity, actualVelocity);
+			if (0) /*if (expectedVelocity > 10.0f && abs(actualVelocity - expectedVelocity) > expectedVelocity * 0.5f)*/ {
+				// interpolate
+				vec3_t delta, newOrigin, newDelta;
+				float scale = (cg.nextSnap->serverTime - cg.nextSnap->ps.commandTime) / 1000.0f;
+				VectorScale(cg.nextSnap->ps.velocity, scale, delta);
+				VectorAdd(cg.nextSnap->ps.origin, delta, newOrigin);
+				VectorSubtract(newOrigin, cg.nextSnap->ps.origin, newDelta);
+				if (VectorLength(newDelta) < 3 * VectorLength(delta)) {
+					// use the interpolation if it's not really far off
+					VectorCopy(newOrigin, cg.nextSnap->ps.origin);
+				}
+			}
+		}
+	}
+
 	// check for extrapolation errors
 	for ( num = 0 ; num < snap->numEntities ; num++ ) 
 	{
@@ -290,7 +326,8 @@ static snapshot_t *CG_ReadNextSnapshot( void ) {
 
 		// FIXME: why would trap_GetSnapshot return a snapshot with the same server time
 		if ( cg.snap && r && dest->serverTime == cg.snap->serverTime ) {
-			//continue;
+			// happens during local server
+			continue;
 		}
 
 		// if it succeeded, return

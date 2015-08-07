@@ -220,8 +220,20 @@ void CG_SetConfigValues( void )
 	cgs.levelStartTime = atoi( CG_ConfigString( CS_LEVEL_START_TIME ) );
 	if( cgs.gametype == GT_CTF || cgs.gametype == GT_CTY ) {
 		s = CG_ConfigString( CS_FLAGSTATUS );
-		cgs.redflag = s[0] - '0';
-		cgs.blueflag = s[1] - '0';
+		{
+			flagStatus_t oldflag;
+			// format is rb where its red/blue, 0 is at base, 1 is taken, 2 is dropped
+			oldflag = cgs.redflag;
+			cgs.redflag = s[0] - '0';
+			if (cgs.redflag == FLAG_DROPPED && oldflag != FLAG_DROPPED) {
+				cgs.redflagReturnTime = cg.time - cgs.levelStartTime + 30000;
+			}
+			oldflag = cgs.blueflag;
+			cgs.blueflag = s[1] - '0';
+			if (cgs.blueflag == FLAG_DROPPED && oldflag != FLAG_DROPPED) {
+				cgs.blueflagReturnTime = cg.time - cgs.levelStartTime + 30000;
+			}
+		}
 	}
 	cg.warmup = atoi( CG_ConfigString( CS_WARMUP ) );
 
@@ -844,9 +856,18 @@ static void CG_ConfigStringModified( void ) {
 		CG_BuildSpectatorString();
 	} else if ( num == CS_FLAGSTATUS ) {
 		if( cgs.gametype == GT_CTF || cgs.gametype == GT_CTY ) {
+			flagStatus_t oldflag;
 			// format is rb where its red/blue, 0 is at base, 1 is taken, 2 is dropped
+			oldflag = cgs.redflag;
 			cgs.redflag = str[0] - '0';
+			if (cgs.redflag == FLAG_DROPPED && oldflag != FLAG_DROPPED) {
+				cgs.redflagReturnTime = cg.time - cgs.levelStartTime + 30000;
+			}
+			oldflag = cgs.blueflag;
 			cgs.blueflag = str[1] - '0';
+			if (cgs.blueflag == FLAG_DROPPED && oldflag != FLAG_DROPPED) {
+				cgs.blueflagReturnTime = cg.time - cgs.levelStartTime + 30000;
+			}
 		}
 	}
 	else if ( num == CS_SHADERSTATE ) {
@@ -1035,6 +1056,12 @@ static void CG_MapRestart( void ) {
 	}
 	*/
 	trap_Cvar_Set("cg_thirdPerson", "0");
+	if ( !cg_noAutoDemo.integer && !cg.demoPlayback ) {
+		extern char demoName[MAX_STRING_CHARS];
+		trap_Cvar_Set( "cg_demoName", demoName );
+		trap_SendConsoleCommand( "stoprecord;fixdemo;" );
+		CG_autoRecord_f( );
+	}
 }
 
 /*
@@ -1520,6 +1547,8 @@ static void CG_ServerCommand( void ) {
 	if ( !strcmp( cmd, "cp" ) ) {
 		char strEd[MAX_STRINGED_SV_STRING];
 		CG_CheckSVStringEdRef(strEd, CG_Argv(1));
+		if( ( !Q_strncmp( strEd, "^5JA+ Mod", strlen( "^5JA+ Mod" ) ) || 
+			  !Q_strncmp( strEd, "^7^5JA+ Mod", strlen( "^7^5JA+ Mod" ) ) ) && cg_disableJPMOTD.integer ) return;
 		CG_CenterPrint( strEd, SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 		return;
 	}
