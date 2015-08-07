@@ -8,3 +8,7 @@ codemp/ui/Debug(SH)/
 codemp/ipch/
 *.vcproj.*.*.user
 codemp/ui/obj/
+*.dll
+*.exp
+*.lib
+*.a

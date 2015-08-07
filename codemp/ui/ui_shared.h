@@ -1,6 +1,9 @@
 #ifndef __UI_SHARED_H
 #define __UI_SHARED_H
 
+#ifdef NORECT
+#define Rectangle RectangleJKA
+#endif
 
 #include "../game/q_shared.h"
 #include "../cgame/tr_types.h"
@@ -343,6 +346,7 @@ typedef struct {
   qhandle_t	qhSmall2Font;
   qhandle_t	qhMediumFont;
   qhandle_t	qhBigFont;
+  qhandle_t	qhHudFont;
   qhandle_t cursor;
   qhandle_t gradientBar;
   qhandle_t scrollBarArrowUp;

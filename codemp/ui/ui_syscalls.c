@@ -8,6 +8,9 @@
 static int (QDECL *syscall)( int arg, ... ) = (int (QDECL *)( int, ...))-1;
 
 #include "../namespace_begin.h"
+#ifdef GNUC
+__declspec(dllexport)
+#endif
 void dllEntry( int (QDECL *syscallptr)( int arg,... ) ) {
 	syscall = syscallptr;
 }
