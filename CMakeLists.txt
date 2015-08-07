@@ -87,8 +87,11 @@ if(APPLE)
   option(MakeApplicationBundles "Whether to build .app application bundles for engines built" ON)
 endif()
 
-#=============================================================================
-#
+option(BuildWebDownload "Build web download functionality" ON)
+if(MSVC)
+  option(StaticCurl "Use statically linked libcurl" ON)
+endif()
+
 # Custom CMake Modules needed
 #
 #=============================================================================

@@ -1674,6 +1674,25 @@ void CG_NewClientInfo( int clientNum, qboolean entitiesInitialized ) {
 			if ( slash ) {
 				Q_strncpyz( newInfo.skinName, slash + 1, sizeof( newInfo.skinName ) );
 			}
+			// forcing team model?
+			if ( cg_forceTeamModel.integer && cg.snap )
+			{
+				if( cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR &&
+					newInfo.team == cg.snap->ps.persistant[PERS_TEAM] )
+				{
+					//ally
+					if( cg_friendModel.string[0] )
+						Q_strncpyz( newInfo.modelName, cg_friendModel.string, sizeof( newInfo.modelName ) );
+					else
+						Q_strncpyz( newInfo.modelName, DEFAULT_MODEL, sizeof( newInfo.modelName ) );
+				} else {
+					// enemy
+					if( cg_enemyModel.string[0] )
+						Q_strncpyz( newInfo.modelName, cg_enemyModel.string, sizeof( newInfo.modelName ) );
+					else
+						Q_strncpyz( newInfo.modelName, DEFAULT_MODEL, sizeof( newInfo.modelName ) );
+				}
+			}
 		}
 	} else {
 		Q_strncpyz( newInfo.modelName, v, sizeof( newInfo.modelName ) );
@@ -6152,7 +6171,11 @@ void CG_AddSaberBlade( centity_t *cent, centity_t *scent, refEntity_t *saber, in
 		}
 		else if (client->team == TEAM_BLUE)
 		{
+#ifdef TEAM_GREEN
+			scolor = SABER_GREEN;
+#else
 			scolor = SABER_BLUE;
+#endif
 		}
 	}
 
@@ -11011,24 +11034,45 @@ stillDoSaber:
 		}
 		else if (cgs.gametype >= GT_TEAM)
 		{	// A team game
-			switch(ci->team)
-			{
-			case TEAM_RED:
-				legs.shaderRGBA[0] = 255;
-				legs.shaderRGBA[1] = 50;
-				legs.shaderRGBA[2] = 50;
-				break;
-			case TEAM_BLUE:
-				legs.shaderRGBA[0] = 75;
-				legs.shaderRGBA[1] = 75;
-				legs.shaderRGBA[2] = 255;
-				break;
+			// special case: highlight flag carriers yellow
+			if (cent->currentState.powerups & ((1 << PW_BLUEFLAG) | (1 << PW_REDFLAG) | (1 << PW_NEUTRALFLAG))) {
+				if (ci->team == cg.snap->ps.persistant[PERS_TEAM]) {
+					//white
+					legs.shaderRGBA[0] = 255;
+					legs.shaderRGBA[1] = 255;
+					legs.shaderRGBA[2] = 255;
+				} else {
+					//yellow
+					legs.shaderRGBA[0] = 255;
+					legs.shaderRGBA[1] = 255;
+					legs.shaderRGBA[2] = 0;
+				}
+			} else {
+				switch(ci->team)
+				{
+				case TEAM_RED:
+					legs.shaderRGBA[0] = 255;
+					legs.shaderRGBA[1] = 50;
+					legs.shaderRGBA[2] = 50;
+					break;
+				case TEAM_BLUE:
+	#ifdef TEAM_GREEN
+					legs.shaderRGBA[0] = 0;
+					legs.shaderRGBA[1] = 200;
+					legs.shaderRGBA[2] = 0;
+	#else
+					legs.shaderRGBA[0] = 75;
+					legs.shaderRGBA[1] = 75;
+					legs.shaderRGBA[2] = 255;
+	#endif
+					break;
 
-			default:
-				legs.shaderRGBA[0] = 255;
-				legs.shaderRGBA[1] = 255;
-				legs.shaderRGBA[2] = 0;
-				break;
+				default:
+					legs.shaderRGBA[0] = 255;
+					legs.shaderRGBA[1] = 255;
+					legs.shaderRGBA[2] = 0;
+					break;
+				}
 			}
 		}
 		else

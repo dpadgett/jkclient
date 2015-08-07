@@ -261,6 +261,7 @@ void CG_SetConfigValues( void )
 	cgs.levelStartTime = atoi( CG_ConfigString( CS_LEVEL_START_TIME ) );
 	if( cgs.gametype == GT_CTF || cgs.gametype == GT_CTY ) {
 		int redflagId = 0, blueflagId = 0;
+		flagStatus_t oldflag;
 
 		s = CG_ConfigString( CS_FLAGSTATUS );
 
@@ -268,11 +269,21 @@ void CG_SetConfigValues( void )
 		blueflagId = s[1] - '0';
 
 		// fix: proper flag statuses mapping for dropped flag
-		if ( redflagId >= 0 && redflagId < ARRAY_LEN( ctfFlagStatusRemap ) )
+		if ( redflagId >= 0 && redflagId < ARRAY_LEN( ctfFlagStatusRemap ) ) {
+    	oldflag = cgs.redflag;
 			cgs.redflag = ctfFlagStatusRemap[redflagId];
+			if (cgs.redflag == FLAG_DROPPED && oldflag != FLAG_DROPPED) {
+				cgs.redflagReturnTime = cg.time - cgs.levelStartTime + 30000;
+			}
+    }
 
-		if ( blueflagId >= 0 && blueflagId < ARRAY_LEN( ctfFlagStatusRemap ) )
+		if ( blueflagId >= 0 && blueflagId < ARRAY_LEN( ctfFlagStatusRemap ) ) {
+			oldflag = cgs.blueflag;
 			cgs.blueflag = ctfFlagStatusRemap[blueflagId];
+			if (cgs.blueflag == FLAG_DROPPED && oldflag != FLAG_DROPPED) {
+				cgs.blueflagReturnTime = cg.time - cgs.levelStartTime + 30000;
+			}
+    }
 	}
 	cg.warmup = atoi( CG_ConfigString( CS_WARMUP ) );
 
@@ -896,14 +907,25 @@ static void CG_ConfigStringModified( void ) {
 		CG_BuildSpectatorString();
 	} else if ( num == CS_FLAGSTATUS ) {
 		if( cgs.gametype == GT_CTF || cgs.gametype == GT_CTY ) {
+			flagStatus_t oldflag;
 			// format is rb where its red/blue, 0 is at base, 1 is taken, 2 is dropped
 			int redflagId = str[0] - '0', blueflagId = str[1] - '0';
 
-			if ( redflagId >= 0 && redflagId < ARRAY_LEN( ctfFlagStatusRemap ) )
+			if ( redflagId >= 0 && redflagId < ARRAY_LEN( ctfFlagStatusRemap ) ) {
+				oldflag = cgs.redflag;
 				cgs.redflag = ctfFlagStatusRemap[redflagId];
+				if (cgs.redflag == FLAG_DROPPED && oldflag != FLAG_DROPPED) {
+					cgs.redflagReturnTime = cg.time - cgs.levelStartTime + 30000;
+				}
+			}
 
-			if ( blueflagId >= 0 && blueflagId < ARRAY_LEN( ctfFlagStatusRemap ) )
+			if ( blueflagId >= 0 && blueflagId < ARRAY_LEN( ctfFlagStatusRemap ) ) {
+				oldflag = cgs.blueflag;
 				cgs.blueflag = ctfFlagStatusRemap[blueflagId];
+				if (cgs.blueflag == FLAG_DROPPED && oldflag != FLAG_DROPPED) {
+					cgs.blueflagReturnTime = cg.time - cgs.levelStartTime + 30000;
+				}
+			}
 		}
 	}
 	else if ( num == CS_SHADERSTATE ) {
@@ -1091,6 +1113,12 @@ static void CG_MapRestart( void ) {
 	}
 	*/
 //	trap->Cvar_Set("cg_thirdPerson", "0");
+	if ( !cg_noAutoDemo.integer && !cg.demoPlayback ) {
+		extern char demoName[MAX_STRING_CHARS];
+		trap->Cvar_Set( "cg_demoName", demoName );
+		trap->SendConsoleCommand( "stoprecord;fixdemo;" );
+		CG_autoRecord_f( );
+	}
 }
 
 /*
@@ -1473,6 +1501,8 @@ static void CG_CenterPrint_f( void ) {
 	char strEd[MAX_STRINGED_SV_STRING] = {0};
 
 	CG_CheckSVStringEdRef( strEd, CG_Argv( 1 ) );
+  if( ( !Q_strncmp( strEd, "^5JA+ Mod", strlen( "^5JA+ Mod" ) ) || 
+      !Q_strncmp( strEd, "^7^5JA+ Mod", strlen( "^7^5JA+ Mod" ) ) ) && cg_disableJPMOTD.integer ) return;
 	CG_CenterPrint( strEd, SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 }
 

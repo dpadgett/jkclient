@@ -269,6 +269,36 @@ void SP_misc_weather_zone( void ) {
 
 	trap->WE_AddWeatherZone( mins, maxs );
 }
+void SP_target_location( void ) {
+	vec3_t pos;
+	char *mess;
+	int count;
+
+	if ( CG_SpawnString( "targetname", "", &mess ) ) {
+		return;
+	}
+
+	if ( cgs.numLocations >= (int) ARRAY_LEN( cgs.locations ) ) {
+		return;
+	}
+
+	if ( !CG_SpawnVector( "origin", "0 0 0", pos ) ) {
+		trap->Print( "target_location with no origin\n" );
+		return;
+	}
+
+	if ( !CG_SpawnString( "message", "", &mess ) ) {
+		trap->Print( "target_location with no message at %s\n", vtos( pos ) );
+		return;
+	}
+
+	CG_SpawnInt( "count", "7", &count );
+
+	VectorCopy( pos, cgs.locations[cgs.numLocations].pos );
+	Q_CleanStr( mess );
+	Com_sprintf( cgs.locations[cgs.numLocations].str, sizeof( cgs.locations[cgs.numLocations].str ), "^%d%s", (char) Com_Clampi( 0, 7, count ), mess );
+	cgs.numLocations++;
+}
 typedef struct spawn_s {
 	const char	*name;
 	void		(*spawn)( void );
@@ -279,6 +309,7 @@ spawn_t spawns [] = {
 	{ "misc_skyportal",			SP_misc_skyportal			},
 	{ "misc_skyportal_orient",	SP_misc_skyportal_orient	},
 	{ "misc_weather_zone",		SP_misc_weather_zone		},
+	{ "target_location",		SP_target_location			},
 };
 
 /*
@@ -370,6 +401,7 @@ level's entity strings into cg.spawnVars[]
 This does not actually spawn an entity.
 ====================
 */
+static qboolean( *GetEntityToken ) ( char *buffer, int size );
 qboolean CG_ParseSpawnVars( void ) {
 	char keyname[MAX_TOKEN_CHARS];
 	char com_token[MAX_TOKEN_CHARS];
@@ -378,7 +410,7 @@ qboolean CG_ParseSpawnVars( void ) {
 	cg.numSpawnVarChars	= 0;
 
 	// parse the opening brace
-	if( !trap->R_GetEntityToken( com_token, sizeof( com_token ) ) ) {
+	if( !GetEntityToken( com_token, sizeof( com_token ) ) ) {
 		// end of spawn string
 		return qfalse;
 	}
@@ -390,7 +422,7 @@ qboolean CG_ParseSpawnVars( void ) {
 	// go through all the key / value pairs
 	while( 1 ) {
 		// parse key
-		if( !trap->R_GetEntityToken( keyname, sizeof( keyname ) ) ) {
+		if( !GetEntityToken( keyname, sizeof( keyname ) ) ) {
 			trap->Error( ERR_DROP, "CG_ParseSpawnVars: EOF without closing brace" );
 		}
 
@@ -399,7 +431,7 @@ qboolean CG_ParseSpawnVars( void ) {
 		}
 
 		// parse value
-		if( !trap->R_GetEntityToken( com_token, sizeof( com_token ) ) ) {
+		if( !GetEntityToken( com_token, sizeof( com_token ) ) ) {
 			trap->Error( ERR_DROP, "CG_ParseSpawnVars: EOF without closing brace" );
 		}
 
@@ -431,6 +463,47 @@ void SP_worldspawn( void ) {
 	CG_SpawnFloat( "fogstart", "0", &cg_linearFogOverride );
 	CG_SpawnFloat( "radarrange", "2500", &cg_radarRange );
 }
+
+static char		buffer[16384] = "";
+static char		*pStr;
+
+qboolean CG_GetLocationEntityToken( char *buffer, int size ) {
+	char *com_token = COM_ParseExt( &pStr, qtrue );
+	if ( !com_token || com_token[0] == '\0' ) return qfalse;
+	Q_strncpyz( buffer, com_token, size );
+	return qtrue;
+}
+
+qboolean CG_ReadLocationSpawns( void ) {
+	char			filename[MAX_QPATH];
+	int				len;
+	fileHandle_t	f;
+
+	Q_strncpyz( filename, cgs.mapname, sizeof( filename ) );
+	COM_StripExtension( filename, filename, sizeof( filename ) );
+	Com_sprintf( filename, sizeof( filename ), "%s.loc", filename );
+	//trap_FS_FOpenFile( filename, &f, FS_READ );
+	if ( ( len = trap->FS_Open( filename, &f, FS_READ ) ) < 0 ) {
+		Com_Printf( "^CG_ReadLocationSpawns: (%s) file does not exist or too small^7\n", filename );
+		return qfalse;
+	}
+
+	if ( len >= sizeof( buffer ) ) {
+		Com_Printf( "^3SpawnLocations: (%s) file is too big\n", filename );
+		return qfalse;
+	}
+
+	memset( buffer, 0, sizeof( buffer ) );
+	trap->FS_Read( buffer, len, f );
+
+	trap->FS_Close( f );
+
+	pStr = buffer;
+
+	GetEntityToken = CG_GetLocationEntityToken;
+	return qtrue;
+}
+
 /*
 ==============
 CG_ParseEntitiesFromString
@@ -439,6 +512,8 @@ Parses textual entity definitions out of an entstring
 ==============
 */
 void CG_ParseEntitiesFromString( void ) {
+	GetEntityToken = trap->R_GetEntityToken;
+
 	// make sure it is reset
 	trap->R_GetEntityToken( NULL, -1 );
 
@@ -458,6 +533,13 @@ void CG_ParseEntitiesFromString( void ) {
 	// parse ents
 	while( CG_ParseSpawnVars() ) {
 		CG_ParseEntityFromSpawnVars();
+	}
+
+	// spawn any extra user-supplied location entities from text file
+	if ( CG_ReadLocationSpawns() ) {
+		while ( CG_ParseSpawnVars() ) {
+			CG_ParseEntityFromSpawnVars();
+		}
 	}
 
 	cg.spawning = qfalse; // any future calls to CG_Spawn*() will be errors

@@ -1150,10 +1150,10 @@ static int CG_CalcFov( void ) {
 	{
 		cgFov = 1;
 	}
-	if (cgFov > 130)
+	/*if (cgFov > 130)
 	{
 		cgFov = 130;
-	}
+	}*/
 
 	if ( cg.predictedPlayerState.pm_type == PM_INTERMISSION ) {
 		// if in intermission, use a fixed value
@@ -1167,9 +1167,9 @@ static int CG_CalcFov( void ) {
 			fov_x = cgFov;
 			if ( fov_x < 1 ) {
 				fov_x = 1;
-			} else if ( fov_x > 160 ) {
+			}/* else if ( fov_x > 160 ) {
 				fov_x = 160;
-			}
+			}*/
 		}
 
 		if (cg.predictedPlayerState.zoomMode == 2)
@@ -2403,6 +2403,7 @@ extern qboolean cgQueueLoad;
 extern void CG_ActualLoadDeferredPlayers( void );
 
 static int cg_siegeClassIndex = -2;
+vec3_t	deathloc;
 
 void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demoPlayback ) {
 	int		inwater;
@@ -2500,6 +2501,17 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 #endif
 		CG_DrawInformation();
 		return;
+	}
+	
+	if( cg_fixDemoScores.integer && cg.scoresRequestTime + 2000 < serverTime )
+	{
+		cg.scoresRequestTime = serverTime;
+		trap->SendClientCommand( "score" );
+	}
+	
+	if( cg.snap->ps.stats[STAT_HEALTH] <= 0 )
+	{
+		VectorCopy( cg.snap->ps.origin, deathloc );
 	}
 
 	// let the client system know what our weapon and zoom settings are
@@ -2719,5 +2731,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 	if ( cg_stats.integer ) {
 		trap->Print( "cg.clientFrame:%i\n", cg.clientFrame );
 	}
+	
+	//CG_Printf("%d %d\n", cg_entities[cg.snap->ps.clientNum].currentState.legsAnim, cg_entities[cg.snap->ps.clientNum].currentState.torsoAnim );
 }
 

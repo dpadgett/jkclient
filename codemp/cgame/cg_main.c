@@ -24,6 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 // cg_main.c -- initialization and primary entry point for cgame
 #include "cg_local.h"
+#include "cg_threads.h"
 
 #include "ui/ui_shared.h"
 
@@ -35,6 +36,7 @@ displayContextDef_t cgDC;
 
 extern int cgSiegeRoundState;
 extern int cgSiegeRoundTime;
+extern qboolean BG_FileExists(const char *fileName);
 /*
 Ghoul2 Insert Start
 */
@@ -1106,7 +1108,9 @@ static void CG_RegisterGraphics( void ) {
 
 	CG_LoadingString( cgs.mapname );
 
-	trap->R_LoadWorld( cgs.mapname );
+	if( BG_FileExists( cgs.mapname ) )
+		trap->R_LoadWorld( cgs.mapname );
+	else trap->R_LoadWorld( "maps/mp/ffa1.bsp" );
 
 	// precache status bar pics
 //	CG_LoadingString( "game media" );
@@ -1302,6 +1306,8 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.binocularTri			= trap->R_RegisterShader( "gfx/2d/binTopTri" );
 	cgs.media.binocularStatic		= trap->R_RegisterShader( "gfx/2d/binocularWindow" );
 	cgs.media.binocularOverlay		= trap->R_RegisterShader( "gfx/2d/binocularNumOverlay" );
+	
+	cgs.media.tint					= trap->R_RegisterShader( "gfx/2d/tint" );
 
 	cg.loadLCARSStage = 5;
 
@@ -1627,6 +1633,30 @@ const char *CG_ConfigString( int index ) {
 		trap->Error( ERR_DROP, "CG_ConfigString: bad index: %i", index );
 	}
 	return cgs.gameState.stringData + cgs.gameState.stringOffsets[ index ];
+}
+
+/*
+====================
+CG_GetConfigString
+====================
+*/
+qboolean CG_GetConfigString(int index, char *buf, int size) {
+	int		offset;
+
+	if (index < 0 || index >= MAX_CONFIGSTRINGS)
+		return qfalse;
+
+	offset = cgs.gameState.stringOffsets[index];
+	if (!offset) {
+		if( size ) {
+			buf[0] = 0;
+		}
+		return qfalse;
+	}
+
+	Q_strncpyz(buf, cgs.gameState.stringData+offset, size);
+ 
+	return qtrue;
 }
 
 //==================================================================
@@ -2388,6 +2418,8 @@ void CG_PmoveClientPointerUpdate();
 void WP_SaberLoadParms( void );
 void BG_VehicleLoadParms( void );
 
+qboolean fakeMap = qfalse;
+
 /*
 =================
 CG_Init
@@ -2441,6 +2473,7 @@ Ghoul2 Insert End
 	//	and even if/when they get overwritten they'll be legalised by the menu asset parser :-)
 //	CG_LoadFonts();
 	cgDC.Assets.qhSmallFont  = trap->R_RegisterFont("ocr_a");
+  cgDC.Assets.qhHudFont = trap->R_RegisterFont("hud_font");
 	cgDC.Assets.qhMediumFont = trap->R_RegisterFont("ergoec");
 	cgDC.Assets.qhBigFont = cgDC.Assets.qhMediumFont;
 
@@ -2572,7 +2605,13 @@ Ghoul2 Insert End
 	// load the new map
 //	CG_LoadingString( "collision map" );
 
-	trap->CM_LoadMap( cgs.mapname, qfalse );
+	if( BG_FileExists( cgs.mapname ) )
+		trap->CM_LoadMap( cgs.mapname, qfalse );
+	else
+	{
+		fakeMap = qtrue;
+		trap->CM_LoadMap( "maps/mp/ffa1.bsp", qfalse );
+	}
 
 	String_Init();
 
@@ -2686,6 +2725,8 @@ Called before every level change or subsystem restart
 */
 void CG_Shutdown( void )
 {
+	extern char demoName[MAX_STRING_CHARS];
+	
 	BG_ClearAnimsets(); //free all dynamic allocations made through the engine
 
     CG_DestroyAllGhoul2();
@@ -2702,6 +2743,13 @@ void CG_Shutdown( void )
 
 	// some mods may need to do cleanup work here,
 	// like closing files or archiving session data
+	trap->Cvar_Set( "cg_demoName", demoName );
+	if ( !cg_noAutoDemo.integer )
+	{
+		extern void CG_FixDemo_f(void);
+		trap->SendConsoleCommand( "stoprecord;fixdemo;" );
+		CG_FixDemo_f();
+	}
 }
 
 /*
@@ -3001,8 +3049,53 @@ This must be the very first function compiled into the .q3vm file
 Q_EXPORT intptr_t vmMain( int command, intptr_t arg0, intptr_t arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4,
 	intptr_t arg5, intptr_t arg6, intptr_t arg7, intptr_t arg8, intptr_t arg9, intptr_t arg10, intptr_t arg11 )
 {
+#ifdef WEB_DOWNLOAD
+	static int oa0, oa1, oa2;
+  if ( command == CG_INIT ) {
+    memset( &cgs, 0, sizeof( cgs ) );
+  }
+	if ( cgs.is_downloading ) {
+		if ( command == CG_DRAW_ACTIVE_FRAME ) {
+			cg.time = arg0;
+			cgDC.realTime = cg.time;
+			cg.demoPlayback = (qboolean)arg2;
+			// update cvars
+			CG_UpdateCvars();
+			/*if(cg.svCvarCount > 0) {
+				if(CG_BackupConfig()) {
+					CG_ManageSVCVars();
+				}
+				CG_RestoreConfig();
+			}*/
+			CG_DrawInformation();
+		}
+		if ( cgs.is_downloading == 2 ) {
+//			CG_InitThreads();
+//			ListFiles();
+//			cgs.is_downloading = 1;
+			Com_Printf("Download completed successfully.\n");
+			cgs.is_downloading = 1;
+			trap->Cvar_Set("fs_game", "base");
+	        //trap_SendConsoleCommand("donedl\n");
+	        trap->SendClientCommand("donedl");
+			//trap_SendConsoleCommand("reconnect\n");
+		} else if ( cgs.is_downloading == 3 ) {
+			extern int curl_res;
+			Com_Printf("There was a problem retrieving files referenced by the server - cURL result %d.  Attempting load anyways...\n", curl_res);
+			cgs.is_downloading = 0;
+//			trap_Cvar_Set("fs_game", "base");
+//	        trap_SendConsoleCommand("donedl\n");
+			CG_Init( oa0, oa1, oa2 );
+		}
+		return 0;
+	}
+#endif
 	switch ( command ) {
 	case CG_INIT:
+#ifdef WEB_DOWNLOAD
+		CG_InitThreads();
+		if ( ListFiles() != 0 ) { oa0 = arg0; oa1 = arg1; oa2 = arg2; return -1; }
+#endif
 		CG_Init( arg0, arg1, arg2 );
 		return 0;
 
@@ -3125,4 +3218,27 @@ Q_EXPORT intptr_t vmMain( int command, intptr_t arg0, intptr_t arg1, intptr_t ar
 		break;
 	}
 	return -1;
+}
+
+// Standard naming for screenshots/demos
+char *CG_generateFilename(void)
+{
+	qtime_t ct;
+	const char *pszServerInfo = CG_ConfigString(CS_SERVERINFO);
+	
+	trap->RealTime(&ct);
+	return va("%d-%02d-%02d-%02d%02d%02d-%s",
+								1900+ct.tm_year, ct.tm_mon+1,ct.tm_mday,
+								ct.tm_hour, ct.tm_min, ct.tm_sec,
+								COM_SkipPath(Info_ValueForKey(pszServerInfo, "mapname")));
+}
+
+char demoName[MAX_STRING_CHARS];
+
+// Dynamically names a demo and sets up the recording
+void CG_autoRecord_f( void ) {
+	char val[MAX_STRING_CHARS];
+	Q_strncpyz( demoName, CG_generateFilename(), sizeof( demoName ) );
+	trap->Cvar_VariableStringBuffer( "g_synchronousclients", val, sizeof( val ) );
+	trap->SendConsoleCommand( va( "set g_synchronousclients 1;record %s;set g_synchronousclients %s\n", demoName, val ) );
 }

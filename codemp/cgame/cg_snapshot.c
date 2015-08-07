@@ -126,6 +126,10 @@ void CG_SetInitialSnapshot( snapshot_t *snap ) {
 	// what the server has indicated the current weapon is
 	CG_Respawn();
 
+	// init force selection to SPEED
+	cg.forceSelect = cg.snap->ps.fd.forcePowerSelected = FP_SPEED;
+	trap->SetUserCmdValue( cg.weaponSelect, cg.zoomSensitivity, 0.0f, 0.0f, 0.0f, cg.forceSelect, cg.itemSelect, qfalse );
+	
 	for ( i = 0 ; i < cg.snap->numEntities ; i++ ) {
 		state = &cg.snap->entities[ i ];
 		cent = &cg_entities[ state->number ];
@@ -139,6 +143,12 @@ void CG_SetInitialSnapshot( snapshot_t *snap ) {
 
 		// check for events
 		CG_CheckEvents( cent );
+	}
+	
+	if ( !cg_noAutoDemo.integer && !cg.demoPlayback )
+	{
+		CG_autoRecord_f( );
+		trap->SendConsoleCommand( "fixdemo;" );
 	}
 }
 
@@ -237,6 +247,32 @@ static void CG_SetNextSnap( snapshot_t *snap ) {
 	//cg_entities[ cg.snap->ps.clientNum ].interpolate = qtrue;
 	//No longer want to do this, as the cg_entities[clnum] and cg.predictedPlayerEntity are one in the same.
 
+	if (0) {
+		Com_Printf("Snapshot transition - delta %d, time %d to %d - missing delta %d, command time %d\n", cg.nextSnap->serverTime - cg.snap->serverTime, cg.snap->serverTime, cg.nextSnap->serverTime,
+			cg.nextSnap->serverTime - cg.nextSnap->ps.commandTime, cg.nextSnap->ps.commandTime);
+		{
+			vec3_t diff;
+			float actualVelocity, expectedVelocity;
+			VectorSubtract(cg.nextSnap->ps.origin, cg.snap->ps.origin, diff);
+			//diff[2] = 0; // only do XYVel
+			actualVelocity = VectorLength(diff) * 1000 / (cg.nextSnap->serverTime - cg.snap->serverTime);
+			expectedVelocity = VectorLength(cg.snap->ps.velocity);
+			Com_Printf("Velocity: %f\nActual velocity: %f\n", expectedVelocity, actualVelocity);
+			if (0) /*if (expectedVelocity > 10.0f && abs(actualVelocity - expectedVelocity) > expectedVelocity * 0.5f)*/ {
+				// interpolate
+				vec3_t delta, newOrigin, newDelta;
+				float scale = (cg.nextSnap->serverTime - cg.nextSnap->ps.commandTime) / 1000.0f;
+				VectorScale(cg.nextSnap->ps.velocity, scale, delta);
+				VectorAdd(cg.nextSnap->ps.origin, delta, newOrigin);
+				VectorSubtract(newOrigin, cg.nextSnap->ps.origin, newDelta);
+				if (VectorLength(newDelta) < 3 * VectorLength(delta)) {
+					// use the interpolation if it's not really far off
+					VectorCopy(newOrigin, cg.nextSnap->ps.origin);
+				}
+			}
+		}
+	}
+
 	// check for extrapolation errors
 	for ( num = 0 ; num < snap->numEntities ; num++ )
 	{
@@ -314,10 +350,7 @@ static snapshot_t *CG_ReadNextSnapshot( void ) {
 			//[BugFix30]
 			//According to dumbledore, this situation occurs when you're playing back a demo that was record when
 			//the game was running in local mode.  As such, we need to skip those snaps or the demo looks laggy.
-			if ( cg.demoPlayback )
-			{
-				continue;
-			}
+			continue;
 			//[/BugFix30]
 		}
 

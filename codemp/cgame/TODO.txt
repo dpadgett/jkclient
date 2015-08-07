@@ -1,0 +1,17 @@
+ - team-based forcemodel (done)
+    - cg_forceTeamModel 1 to activate
+    - set cg_friendModel and cg_enemyModel for it to work
+ - force sight simplification (done)
+    - added as new assets in the pk3
+ - client-based chat tokens? or at least basic location / health stuff in cvars or maybe in varmath (done)
+    - do /varmath for basic help
+    - token names are $health, $shields, $deathLoc, $loc - deathloc returns the location that you last died in (useful for after blowing self up when fc?), but locations arent set up for some maps (location maps for the base ctf maps are included in the pk3)
+    - since this is complicated here's an example of my bind: bind KP_RIGHTARROW "varMath user_healBind = say_team + $space + TH + $space + @ + $space + $loc;vstr user_healBind" (cg_noprint 1s could be added if the echo stuff on the top gets annoying)
+ - votefix (done)
+ - auto demo taking (done)
+    - cvars: cg_noAutoDemo 1 to disable entire system, cg_fixDemoScores 0 if you have issues joining / chatting / selfkilling due to spam protection (should work fine on pug servers)
+    - to make the system work you need to bind the commannd "niceshot" to a key, then press it when you get a nice shot - at the end of the game the demo will automatically be renamed to the time that you pressed the bind, otherwise it will be deleted
+ - scoreboard fix in demos (done / cvarred)
+    - cg_fixDemoScores
+ - protect / absorb - not as opaque in first person (done)
+ - load blank map if connecting to server with a custom map that you don't have (half done / failed / impossible - use separate chat mod if absolutely necessary - ask me on msn xD)
