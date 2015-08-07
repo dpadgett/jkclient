@@ -39,7 +39,7 @@ char *strcpy( char *strDestination, const char *strSource );
 int strcmp( const char *string1, const char *string2 );
 char *strchr( const char *string, int c );
 char *strstr( const char *string, const char *strCharSet );
-char *strncpy( char *strDest, const char *strSource, size_t count );
+//char *strncpy( char *strDest, const char *strSource, size_t count );
 int tolower( int c );
 int toupper( int c );
 
@@ -53,8 +53,8 @@ int sscanf( const char *buffer, const char *fmt, ... );
 
 // Memory functions
 void *memmove( void *dest, const void *src, size_t count );
-void *memset( void *dest, int c, size_t count );
-void *memcpy( void *dest, const void *src, size_t count );
+//void *memset( void *dest, int c, size_t count );
+//void *memcpy( void *dest, const void *src, size_t count );
 
 // Math functions
 double ceil( double x );

@@ -11,6 +11,11 @@
 
 #define MAX_TEAMNAME 32
 
+#ifdef GNUC
+#undef WIN32
+#undef _WIN32
+#endif
+
 #include "../qcommon/disablewarnings.h"
 
 #include "teams.h" //npc team stuff
@@ -87,6 +92,11 @@ extern int g_G2AllocServer;
 #include <time.h>
 #include <ctype.h>
 #include <limits.h>
+
+#ifdef GNUC
+#define min(x,y) ((x)<(y)?(x):(y))
+#define max(x,y) ((x)>(y)?(x):(y))
+#endif
 
 // Special min treatment for Xbox C++ version
 
@@ -255,13 +265,11 @@ static inline int LittleLong (int l) { return LongSwap(l); }
 static inline float LittleFloat (const float l) { return FloatSwap(&l); }
 
 #endif
-
 //======================= LINUX DEFINES =================================
 
 // the mac compiler can't handle >32k of locals, so we
 // just waste space and make big arrays static...
 #ifdef __linux__
-
 // bk001205 - from Makefile
 #define stricmp strcasecmp
 
@@ -491,7 +499,7 @@ typedef enum {
 #define UI_FORMATMASK	0x00000007
 #define UI_SMALLFONT	0x00000010
 #define UI_BIGFONT		0x00000020	// default
-//#define UI_GIANTFONT	0x00000040
+#define UI_HUDFONT		0x00000040
 #define UI_DROPSHADOW	0x00000800
 #define UI_BLINK		0x00001000
 #define UI_INVERSE		0x00002000
@@ -574,7 +582,7 @@ typedef enum {
 
 
 
-typedef enum
+enum
 {
 	SABER_RED,
 	SABER_ORANGE,
@@ -587,7 +595,7 @@ typedef enum
 };
 typedef int saber_colors_t;
 
-typedef enum
+enum
 {
 	FP_FIRST = 0,//marker
 	FP_HEAL = 0,//instant
@@ -840,7 +848,7 @@ typedef struct
 } saberInfo_t;
 #define MAX_SABERS 2
 
-typedef enum
+enum
 {
 	FORCE_LEVEL_0,
 	FORCE_LEVEL_1,
@@ -964,7 +972,7 @@ enum sharedEIKMoveState
 };
 
 //material stuff needs to be shared
-typedef enum //# material_e
+enum //# material_e
 {
 	MAT_METAL = 0,	// scorched blue-grey metal
 	MAT_GLASS,		// not a real chunk type, just plays an effect with glass sprites
@@ -1239,7 +1247,7 @@ float Q_rsqrt( float f );		// reciprocal square root
 signed char ClampChar( int i );
 signed short ClampShort( int i );
 
-float powf ( float x, int y );
+float FIXEDpowf ( float x, int y );
 
 // this isn't a real cheap function to call!
 int DirToByte( vec3_t dir );
@@ -1942,7 +1950,7 @@ typedef struct {
 // sound channels
 // channel 0 never willingly overrides
 // other channels will allways override a playing sound on that channel
-typedef enum {
+enum {
 	CHAN_AUTO,	//## %s !!"W:\game\base\!!sound\*.wav;*.mp3" # Auto-picks an empty channel to play sound on
 	CHAN_LOCAL,	//## %s !!"W:\game\base\!!sound\*.wav;*.mp3" # menu sounds, etc
 	CHAN_WEAPON,//## %s !!"W:\game\base\!!sound\*.wav;*.mp3" 
@@ -3029,7 +3037,7 @@ typedef struct qtime_s {
 #define AS_MPLAYER			3 // (Obsolete)
 
 // cinematic states
-typedef enum {
+enum {
 	FMV_IDLE,
 	FMV_PLAY,		// play
 	FMV_EOF,		// all other conditions, i.e. stop/EOF/abort
@@ -3040,12 +3048,12 @@ typedef enum {
 };
 typedef int e_status;
 
-typedef enum _flag_status {
+enum _flag_status {
 	FLAG_ATBASE = 0,
 	FLAG_TAKEN,			// CTF
+	FLAG_DROPPED,
 	FLAG_TAKEN_RED,		// One Flag CTF
 	FLAG_TAKEN_BLUE,	// One Flag CTF
-	FLAG_DROPPED
 };
 typedef int flagStatus_t;
 
@@ -3083,7 +3091,7 @@ typedef struct {
 
 // For ghoul2 axis use
 
-typedef enum Eorientations
+enum Eorientations
 {
 	ORIGIN = 0, 
 	POSITIVE_X,
@@ -3101,7 +3109,7 @@ Ghoul2 Insert End
 // define the new memory tags for the zone, used by all modules now
 //
 #define TAGDEF(blah) TAG_ ## blah
-typedef enum {
+enum {
 	#include "../qcommon/tags.h"
 };
 typedef char memtag_t;
@@ -3178,7 +3186,8 @@ enum {
 	FONT_SMALL=1,
 	FONT_MEDIUM,
 	FONT_LARGE,
-	FONT_SMALL2
+	FONT_SMALL2,
+	FONT_HUD
 };
 
 

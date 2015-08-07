@@ -403,7 +403,7 @@ extern int	numVehicles;
 #define	VEH_MOUNT_THROW_RIGHT		-6
 
 
-typedef enum
+enum
 {
 	VEH_EJECT_LEFT, 
 	VEH_EJECT_RIGHT, 
@@ -474,7 +474,7 @@ typedef struct
 } vehTurretStatus_t;
 // This is the implementation of the vehicle interface and any of the other variables needed. This
 // is what actually represents a vehicle. -AReis.
-typedef struct Vehicle_s
+struct Vehicle_s
 {
 	// The entity who pilots/drives this vehicle.
 	// NOTE: This is redundant (since m_pParentEntity->owner _should_ be the pilot). This makes things clearer though.
@@ -620,7 +620,7 @@ typedef struct Vehicle_s
 	//the guy who was previously the pilot
 	bgEntity_t *	m_pOldPilot;
 
-} Vehicle_t;
+};
 
 #include "../namespace_begin.h"
 extern int BG_VehicleGetIndex( const char *vehicleName );

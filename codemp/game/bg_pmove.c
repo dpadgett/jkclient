@@ -13,6 +13,10 @@
 #include "g_local.h" //ahahahahhahahaha@$!$!
 #endif
 
+#ifdef CGAME
+#include "../cgame/cg_local.h"
+#endif
+
 #define MAX_WEAPON_CHARGE_TIME 5000
 
 #ifdef QAGAME
@@ -709,7 +713,7 @@ void BG_VehicleTurnRateForSpeed( Vehicle_t *pVeh, float speed, float *mPitchOver
 
 // Following couple things don't belong in the DLL namespace!
 #ifdef QAGAME
-typedef struct gentity_s gentity_t;
+//typedef struct gentity_s gentity_t;
 gentity_t *G_PlayEffectID(const int fxID, vec3_t org, vec3_t ang);
 #endif
 
@@ -1160,6 +1164,10 @@ static void PM_Accelerate( vec3_t wishdir, float wishspeed, float accel )
 				accelspeed = addspeed;
 			}
 		}
+		
+		#ifdef CGAME
+		//if( pm->ps->clientNum == cg.snap->ps.clientNum ) myAccel = accel * wishspeed;
+		#endif
 
 		for (i=0 ; i<3 ; i++) {
 			pm->ps->velocity[i] += accelspeed*wishdir[i];	
@@ -11062,11 +11070,11 @@ void PmoveSingle (pmove_t *pmove) {
 		PM_HoverTrace();
 	}
 	PM_SetWaterLevel();
-	if (pm->cmd.forcesel != -1 && (pm->ps->fd.forcePowersKnown & (1 << pm->cmd.forcesel)))
+	if (/*pm->cmd.forcesel != -1 && */(pm->ps->fd.forcePowersKnown & (1 << pm->cmd.forcesel)))
 	{
 		pm->ps->fd.forcePowerSelected = pm->cmd.forcesel;
 	}
-	if (pm->cmd.invensel != -1 && (pm->ps->stats[STAT_HOLDABLE_ITEMS] & (1 << pm->cmd.invensel)))
+	if (/*pm->cmd.invensel != -1 && */(pm->ps->stats[STAT_HOLDABLE_ITEMS] & (1 << pm->cmd.invensel)))
 	{
 		pm->ps->stats[STAT_HOLDABLE_ITEM] = BG_GetItemIndexByTag(pm->cmd.invensel, IT_HOLDABLE);
 	}

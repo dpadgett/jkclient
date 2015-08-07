@@ -2778,8 +2778,8 @@ qboolean BG_ValidateSkinForTeam( const char *modelName, char *skinName, int team
 		else if (team == TEAM_BLUE && colors)
 		{
 			colors[0] = 0.0f;
-			colors[1] = 0.0f;
-			colors[2] = 1.0f;
+			colors[1] = 1.0f;
+			colors[2] = 0.0f;
 		}
 		return qtrue;
 	}

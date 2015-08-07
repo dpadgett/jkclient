@@ -1977,3 +1977,4 @@ void SP_trigger_asteroid_field(gentity_t *self)
 
     trap_LinkEntity(self);
 }
+

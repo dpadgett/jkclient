@@ -497,8 +497,11 @@ This must be the very first function compiled into the .q3vm file
 ================
 */
 #include "../namespace_begin.h"
-#ifdef __linux__
+/*#ifdef __linux__
 extern "C" {
+#endif*/
+#ifdef GNUC
+__declspec(dllexport)
 #endif
 int vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, int arg7, int arg8, int arg9, int arg10, int arg11  ) {
 	switch ( command ) {
@@ -682,9 +685,9 @@ int vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4, int a
 
 	return -1;
 }
-#ifdef __linux__
+/*#ifdef __linux__
 }
-#endif
+#endif*/
 #include "../namespace_end.h"
 
 
