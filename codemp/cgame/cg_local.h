@@ -28,6 +28,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "rd-common/tr_types.h"
 #include "game/bg_public.h"
 #include "cg_public.h"
+//#include "../ui/ui_shared.h"
 
 // The entire cgame module is unloaded and reloaded on each level change,
 // so there is NO persistant data between levels on the client side.
@@ -92,6 +93,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define	WAVE_AMPLITUDE	1
 #define	WAVE_FREQUENCY	0.4
+
+typedef struct {
+	char remoteurl[MAX_CVAR_VALUE_STRING];
+	char localfile[144];
+} cg_downloadInfo_t;
 
 typedef enum {
 	FOOTSTEP_STONEWALK,
@@ -1030,6 +1036,7 @@ Ghoul2 Insert End
 	int numSpawnVarChars;
 	char spawnVarChars[MAX_SPAWN_VARS_CHARS];
 
+	long				powerupRespawnTime[MAX_POWERUPS];
 } cg_t;
 
 #define MAX_TICS	14
@@ -1383,6 +1390,9 @@ typedef struct cgMedia_s {
 	qhandle_t	bdecal_saberglow;
 	qhandle_t	bdecal_burn1;
 	qhandle_t	mSaberDamageGlow;
+	
+	// tint
+	qhandle_t	tint;
 
 	// For vehicles only now
 	sfxHandle_t	noAmmoSound;
@@ -1527,6 +1537,13 @@ typedef struct cg_staticmodel_s {
 	float			zoffset;
 } cg_staticmodel_t;
 
+#define MAX_LOC_ENTS	500
+
+typedef struct {
+	vec3_t	pos;
+	char	str[MAX_STRING_CHARS];
+} locEntity_t;
+
 // The client game static (cgs) structure hold everything
 // loaded or calculated from the gamestate.  It will NOT
 // be cleared when a tournament restart is done, allowing
@@ -1592,6 +1609,7 @@ typedef struct cgs_s {
 	int				duelist3health;
 
 	int				redflag, blueflag;		// flag status from configstrings
+	int				redflagReturnTime, blueflagReturnTime;
 	int				flagStatus;
 
 	qboolean  newHud;
@@ -1627,6 +1645,15 @@ typedef struct cgs_s {
 	int					numMiscStaticModels;
 	cg_staticmodel_t	miscStaticModels[MAX_STATIC_MODELS];
 
+	int is_downloading;
+	double dltotal;
+	double dlnow;
+	char dlname[MAX_STRING_CHARS];
+	double dltime;
+
+	// location entites
+	locEntity_t		locations[MAX_LOC_ENTS];
+	int				numLocations;
 } cgs_t;
 
 typedef struct siegeExtended_s
@@ -1661,6 +1688,8 @@ extern	markPoly_t		cg_markPolys[MAX_MARK_POLYS];
 void CG_RegisterCvars( void );
 void CG_UpdateCvars( void );
 
+extern	float			myAccel;
+
 //
 // cg_main.c
 //
@@ -1684,6 +1713,7 @@ void CG_NextInventory_f(void);
 void CG_PrevInventory_f(void);
 void CG_NextForcePower_f(void);
 void CG_PrevForcePower_f(void);
+void CG_autoRecord_f( void );
 
 //
 // cg_view.c
@@ -1964,6 +1994,7 @@ void CG_DrawOldTourneyScoreboard( void );
 //
 qboolean CG_ConsoleCommand( void );
 void CG_InitConsoleCommands( void );
+int ListFiles( void );
 
 //
 // cg_servercmds.c

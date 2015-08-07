@@ -79,6 +79,11 @@ else()
 	set(UseInternalSDL2 OFF)
 endif()
 
+option(BuildWebDownload "Build web download functionality" ON)
+if(MSVC)
+  option(StaticCurl "Use statically linked libcurl" ON)
+endif()
+
 # Custom CMake Modules needed
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/CMakeModules")
 

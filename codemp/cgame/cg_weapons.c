@@ -790,8 +790,8 @@ void CG_AddViewWeapon( playerState_t *ps ) {
 
 	if (cgFov < 1)
 		cgFov = 1;
-	if (cgFov > 130)
-		cgFov = 130;
+	/*if (cgFov > 130)
+		cgFov = 130;*/
 
 	if ( ps->persistant[PERS_TEAM] == TEAM_SPECTATOR ) {
 		return;

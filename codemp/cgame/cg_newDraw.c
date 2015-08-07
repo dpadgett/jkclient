@@ -162,9 +162,9 @@ qboolean CG_OwnerDrawVisible(int flags) {
 	}
 
 	if (flags & (CG_SHOW_BLUE_TEAM_HAS_REDFLAG | CG_SHOW_RED_TEAM_HAS_BLUEFLAG)) {
-		if (flags & CG_SHOW_BLUE_TEAM_HAS_REDFLAG && (cgs.redflag == FLAG_TAKEN || cgs.flagStatus == FLAG_TAKEN_RED)) {
+		if (flags & CG_SHOW_BLUE_TEAM_HAS_REDFLAG && (cgs.redflag == FLAG_TAKEN || cgs.redflag == FLAG_DROPPED || cgs.flagStatus == FLAG_TAKEN_RED)) {
 			return qtrue;
-		} else if (flags & CG_SHOW_RED_TEAM_HAS_BLUEFLAG && (cgs.blueflag == FLAG_TAKEN || cgs.flagStatus == FLAG_TAKEN_BLUE)) {
+		} else if (flags & CG_SHOW_RED_TEAM_HAS_BLUEFLAG && (cgs.blueflag == FLAG_TAKEN || cgs.blueflag == FLAG_DROPPED || cgs.flagStatus == FLAG_TAKEN_BLUE)) {
 			return qtrue;
 		}
 		return qfalse;
@@ -891,9 +891,15 @@ void CG_GetTeamColor(vec4_t *color) {
 		(*color)[3] = 0.25f;
 		(*color)[1] = (*color)[2] = 0.0f;
 	} else if (cg.snap->ps.persistant[PERS_TEAM] == TEAM_BLUE) {
+#ifdef TEAM_GREEN
+	  (*color)[0] = (*color)[2] = 0.0f;
+    (*color)[1] = 0.8f;
+    (*color)[3] = 0.25f;
+#else
 		(*color)[0] = (*color)[1] = 0.0f;
 		(*color)[2] = 1.0f;
 		(*color)[3] = 0.25f;
+#endif
 	} else {
 		(*color)[0] = (*color)[2] = 0.0f;
 		(*color)[1] = 0.17f;

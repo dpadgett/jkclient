@@ -26,6 +26,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define	CGAME_API_VERSION		1
 
 #define	CMD_BACKUP			64
+
+//#define TEAM_GREEN
+#ifdef TEAM_GREEN
+#undef TEAM_GREEN
+#endif
+
 #define	CMD_MASK			(CMD_BACKUP - 1)
 // allow a lot of command backups for very fast systems
 // multiple commands may be combined into a single packet, so this

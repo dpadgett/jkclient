@@ -26,6 +26,20 @@ if(WIN32)
 	set(MPCGameLibraries "odbc32" "odbccp32") # what are these even?
 endif(WIN32)
 set(MPCGameDefines ${MPSharedDefines} "_CGAME" )
+if(BuildWebDownload)
+  find_package(CURL REQUIRED)
+  set(MPCGameIncludeDirectories ${MPCGameIncludeDirectories} ${CURL_INCLUDE_DIRS})
+  set(MPCGameLibraries ${MPCGameLibraries} ${CURL_LIBRARIES})
+  set(MPCGameDefines ${MPCGameDefines} "WEB_DOWNLOAD" )
+  if(StaticCurl)
+    set(MPCGameDefines ${MPCGameDefines} "CURL_STATICLIB" )
+    get_filename_component(CURL_LIBRARY_DIR "${CURL_LIBRARIES}" DIRECTORY)
+    set(MPCGameLibraries ${MPCGameLibraries} "${CURL_LIBRARY_DIR}/libssh2.x86.lib")
+    set(MPCGameLibraries ${MPCGameLibraries} "${CURL_LIBRARY_DIR}/openssl.x86.lib")
+    set(MPCGameLibraries ${MPCGameLibraries} "${CURL_LIBRARY_DIR}/zlib.x86.lib")
+    set(MPCGameLibraries ${MPCGameLibraries} "wsock32.lib" "wldap32.lib" "ws2_32.lib")
+  endif(StaticCurl)
+endif(BuildWebDownload)
 set(MPCGameGameFiles
 	"${MPDir}/game/AnimalNPC.c"
 	"${MPDir}/game/bg_g2_utils.c"
@@ -74,6 +88,8 @@ set(MPCGameCgameFiles
 	"${MPDir}/cgame/cg_snapshot.c"
 	"${MPDir}/cgame/cg_spawn.c"
 	"${MPDir}/cgame/cg_syscalls.c"
+	"${MPDir}/cgame/cg_threads.c"
+	"${MPDir}/cgame/cg_threads.h"
 	"${MPDir}/cgame/cg_turret.c"
 	"${MPDir}/cgame/cg_view.c"
 	"${MPDir}/cgame/cg_weaponinit.c"

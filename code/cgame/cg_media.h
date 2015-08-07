@@ -365,7 +365,6 @@ typedef struct
 	fxHandle_t landingGravel;
 } cgEffects_t;
 
-
 // The client game static (cgs) structure hold everything
 // loaded or calculated from the gamestate.  It will NOT
 // be cleared when a tournement restart is done, allowing
@@ -406,7 +405,6 @@ typedef struct {
 
 	// effects
 	cgEffects_t		effects;
-
 } cgs_t;
 
 extern	cgs_t			cgs;

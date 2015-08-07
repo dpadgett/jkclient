@@ -371,6 +371,7 @@ typedef enum {
 #define UI_FORMATMASK	0x00000007
 #define UI_SMALLFONT	0x00000010
 #define UI_BIGFONT		0x00000020	// default
+#define UI_HUDFONT		0x00000040
 
 #define UI_DROPSHADOW	0x00000800
 #define UI_BLINK		0x00001000
@@ -2394,7 +2395,8 @@ enum {
 	FONT_SMALL=1,
 	FONT_MEDIUM,
 	FONT_LARGE,
-	FONT_SMALL2
+	FONT_SMALL2,
+	FONT_HUD
 };
 
 void NET_AddrToString( char *out, size_t size, void *addr );
