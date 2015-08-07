@@ -1,0 +1,10 @@
+codemp/Final/
+codemp/Final2/
+codemp/Debug/
+codemp/botlib/Debug(SH)/
+codemp/cgame/Debug(SH)/
+codemp/game/Debug(SH)/
+codemp/ui/Debug(SH)/
+codemp/ipch/
+*.vcproj.*.*.user
+codemp/ui/obj/
