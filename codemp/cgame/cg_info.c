@@ -136,7 +136,7 @@ Q_vsnprintf: always appends a trailing '\0', returns number of characters writte
 or returns -1 on failure or if the buffer would be overflowed.
 ============
 */
-static int Q_vsnprintf( char *dest, int size, const char *fmt, va_list argptr ) {
+static int Q_vsnprintf2( char *dest, int size, const char *fmt, va_list argptr ) {
 	int ret;
 
 #ifdef _WIN32
@@ -156,7 +156,7 @@ static void QDECL Com_sprintf2( char *dest, int size, const char *fmt, ... ) {
 	va_list		argptr;
 
 	va_start (argptr,fmt);
-	ret = Q_vsnprintf (dest, size, fmt, argptr);
+	ret = Q_vsnprintf2 (dest, size, fmt, argptr);
 	va_end (argptr);
 	if (ret == -1) {
 		Com_Printf ("Com_sprintf: overflow of %i bytes buffer\n", size);

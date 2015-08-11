@@ -391,7 +391,7 @@ Q_vsnprintf: always appends a trailing '\0', returns number of characters writte
 or returns -1 on failure or if the buffer would be overflowed.
 ============
 */
-static int Q_vsnprintf( char *dest, int size, const char *fmt, va_list argptr ) {
+static int Q_vsnprintf2( char *dest, int size, const char *fmt, va_list argptr ) {
 	int ret;
 
 #ifdef _WIN32
@@ -411,7 +411,7 @@ static void QDECL Com_sprintf2( char *dest, int size, const char *fmt, ... ) {
 	va_list		argptr;
 
 	va_start (argptr,fmt);
-	ret = Q_vsnprintf (dest, size, fmt, argptr);
+	ret = Q_vsnprintf2 (dest, size, fmt, argptr);
 	va_end (argptr);
 	if (ret == -1) {
 		Com_Printf ("Com_sprintf: overflow of %i bytes buffer\n", size);
@@ -594,7 +594,9 @@ void initGfx(void) {
     }
 }
 
+#ifdef WIN32
 void _mkdir(char *);
+#endif
 /*
 ============
 FS_CreatePath
@@ -616,7 +618,11 @@ static qboolean FS_CreatePath (char *OSPath) {
 		if (*ofs == PATH_SEP) {	
 			// create the directory
 			*ofs = 0;
+#ifdef WIN32
 			_mkdir (OSPath);
+#else
+			mkdir (OSPath, 0777);
+#endif
 			*ofs = PATH_SEP;
 		}
 	}
@@ -722,7 +728,7 @@ int runthrostringpls(char *files) {
 		// map name should be the one referenced pak that's not assets.  in theory, lol :s
 		for (c = files, filestart = files; ; *c++) {
 			if (*c == ' ' || *c == '\0') {
-				Q_strncpyz( pk3name, filestart, min( sizeof( pk3name ), c - filestart + 1 ) );
+				Q_strncpyz( pk3name, filestart, Q_min( sizeof( pk3name ), c - filestart + 1 ) );
 				Com_Printf( "Checking pak \"%s\"\n", pk3name );
 				if ( Q_strncmp( pk3name, "assets", strlen( "assets" ) ) && Q_strncmp( pk3name, "pug_map_pool", strlen( "pug_map_pool" ) ) ) {
 					// pk3 is not an assets pk3.  so probably the map?
@@ -984,7 +990,7 @@ size_t headers( void *ptr, size_t size, size_t nmemb, void *userdata)
 		return size*nmemb - 1;
 	}
 	header[41] = header[size*nmemb-1] = header[size*nmemb-2] = 0;
-	if( !stricmp( header, "Content-Disposition: attachment; filename" ) )
+	if( !Q_stricmp( header, "Content-Disposition: attachment; filename" ) )
 	{
 		char *head = header;
 		// name of file is rite here
@@ -996,7 +1002,7 @@ size_t headers( void *ptr, size_t size, size_t nmemb, void *userdata)
 	else
 	{
 		header[39] = 0;
-		if( !stricmp( header, "Warning: 199 File Not Found In Database" ) )
+		if( !Q_stricmp( header, "Warning: 199 File Not Found In Database" ) )
 		{
 			// map is not in db
 			cgs.is_downloading = 3;
@@ -1039,14 +1045,14 @@ void *download_thread(void *file_args)
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ftpfile);
 		//outfile = fopen( va( "%s\\%s", testpath, file), "wb" );
 		//curl_easy_setopt(curl, CURLOPT_WRITEDATA, &outfile);
-		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, FALSE);
+		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
 		curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION ,&progress_callback );
 
 		curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headers);
 		curl_easy_setopt(curl, CURLOPT_WRITEHEADER, &ftpfile);
 
-		curl_easy_setopt(curl, CURLOPT_VERBOSE, TRUE);
-		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, TRUE);
+		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
 		
 		res = curl_easy_perform(curl);
 
