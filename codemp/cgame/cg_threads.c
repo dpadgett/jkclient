@@ -10,7 +10,7 @@
 #include "cg_local.h"
 #ifdef __linux__
 	#include <gnu/lib-names.h>
-#elif defined( __MACOS__ )
+#else
 	#define LIBPTHREAD_SO "/usr/lib/libpthread.dylib"
 #endif
 
@@ -33,23 +33,23 @@ static int (*g_pthread_create)
 void CG_InitThreads(void)
 {
 	if(g_pthreads != NULL) {
-		CG_Printf("pthreads already loaded\n");
+		Com_Printf("pthreads already loaded\n");
 		return;
 	}
 	g_pthreads = dlopen(LIBPTHREAD_SO, RTLD_NOW);
 	if(g_pthreads == NULL) {
-		CG_Printf("could not load libpthread\n%s\n",
+		Com_Printf("could not load libpthread\n%s\n",
 			dlerror());
 		return;
 	}
-	CG_Printf("loaded libpthread\n");
+	Com_Printf("loaded libpthread\n");
 	g_pthread_create = dlsym(g_pthreads,"pthread_create");
 	if(g_pthread_create == NULL) {
-		CG_Printf("could not locate pthread_create\n%s\n",
+		Com_Printf("could not locate pthread_create\n%s\n",
 			dlerror());
 		return;
 	}
-	CG_Printf("found pthread_create\n");	
+	Com_Printf("found pthread_create\n");
 }
 
 int
