@@ -1828,6 +1828,7 @@ CG_FireWeapon
 Caused by an EV_FIRE_WEAPON event
 ================
 */
+qboolean CG_CalcMuzzlePoint(int entityNum, vec3_t muzzle);
 void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 	entityState_t *ent;
 	int				c;
@@ -1953,6 +1954,60 @@ void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 			{
 				trap->S_StartSound( NULL, ent->number, CHAN_WEAPON, weap->flashSound[c] );
 			}
+		}
+	}
+
+	if (!cg.demoPlayback && !(cg.snap->ps.pm_flags & PMF_FOLLOW) && strstr( CG_ConfigString( CS_SERVERFEATURELIST ), "unlg ") != NULL && strchr(nm_flags.string, 'u') != NULL && cent->currentState.number == cg.clientNum) {
+		if (ent->weapon == WP_DISRUPTOR) { // predicted disruptor fire
+			CG_Printf("Rendering unlagged disruptor fire\n");
+			vec3_t muzzle, forward, right, up, endPoint;
+			trace_t tr;
+			VectorCopy(cg.predictedPlayerState.origin, muzzle);
+			muzzle[2] += cg.predictedPlayerState.viewheight;
+			AngleVectors(cg.predictedPlayerState.viewangles, forward, right, up);
+			VectorMA(muzzle, 14, forward, muzzle);
+			VectorMA(muzzle, 16384, forward, endPoint);
+			CG_G2Trace(&tr, muzzle, vec3_origin, vec3_origin, endPoint, cg.clientNum, MASK_SHOT, 0);
+			CG_GetClientWeaponMuzzleBoltPoint(cg.clientNum, muzzle); // actual muzzle point, solely for the visual effects
+
+			if (altFire) {
+				float charge = (cg.time - cg.predictedPlayerState.weaponChargeTime) / (50.0f * 30.0f);
+				FX_DisruptorAltShot(muzzle, tr.endpos, !!(charge >= 1.0f));
+			}
+			else {
+				FX_DisruptorMainShot(muzzle, tr.endpos);
+			}
+		}
+		else if (ent->weapon == WP_CONCUSSION && altFire) { // predicted alt conc fire
+			CG_Printf("Rendering unlagged conc altfire\n");
+			vec3_t muzzle, forward, right, up, endPoint;
+			trace_t tr;
+
+			AngleVectors(cg.predictedPlayerState.viewangles, forward, right, up);
+			CG_CalcMuzzlePoint(cg.predictedPlayerState.clientNum, muzzle);
+
+			VectorMA(muzzle, 16384, forward, endPoint);
+			CG_G2Trace(&tr, muzzle, vec3_origin, vec3_origin, endPoint, cg.clientNum, MASK_SHOT, 0);
+
+			float dist;
+			vec3_t angles;
+			VectorSubtract(tr.endpos, muzzle, angles);
+
+			float shotDist = VectorNormalize(angles);
+			vec3_t spot;
+
+			for (dist = 0.0f; dist < shotDist; dist += 64.0f)
+			{ //one effect would be.. a whole lot better
+				VectorMA(muzzle, dist, angles, spot);
+				trap_FX_PlayEffectID(cgs.effects.mConcussionAltRing, spot, forward, -1, -1);
+			}
+
+			CG_MissileHitWall(WP_CONCUSSION, cg.clientNum, tr.endpos, tr.plane.normal, IMPACTSOUND_DEFAULT, qtrue, 0);
+
+			FX_ConcAltShot(muzzle, spot);
+
+			//steal the bezier effect from the disruptor
+			FX_DisruptorAltMiss(tr.endpos, tr.plane.normal);
 		}
 	}
 }

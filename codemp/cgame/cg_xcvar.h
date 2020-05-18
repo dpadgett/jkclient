@@ -211,4 +211,7 @@ XCVAR_DEF( cl_triedDownload,		  	"0",					NULL,					CVAR_ROM )
 XCVAR_DEF( cl_wwwBaseUrl,				  	"http://pug.jactf.com/mapdl.php/", NULL, CVAR_ARCHIVE )
 XCVAR_DEF( cg_drawFlagDrop,					"0",					NULL,					CVAR_ROM|CVAR_INTERNAL )
 XCVAR_DEF( cg_drawRespawnTimer,			"0",					NULL,					CVAR_ROM|CVAR_INTERNAL )
+//XCVAR_DEF( cg_unlagged,				  	"0", NULL, CVAR_ARCHIVE )
+XCVAR_DEF( nm_ver,				  	"1.5.6", NULL, CVAR_USERINFO )
+XCVAR_DEF( nm_flags,				  	"u", NULL, CVAR_USERINFO )
 #undef XCVAR_DEF

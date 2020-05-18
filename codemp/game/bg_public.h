@@ -111,6 +111,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define CS_FLAGSTATUS			23		// string indicating flag status in CTF
 #define CS_SHADERSTATE			24
 #define CS_BOTINFO				25
+#define CS_SERVERFEATURELIST	CS_BOTINFO // added
 
 #define	CS_ITEMS				27		// string of 0's and 1's that tell which items are present
 

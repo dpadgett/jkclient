@@ -6289,7 +6289,6 @@ void CG_CalcEWebMuzzlePoint(centity_t *cent, vec3_t start, vec3_t d_f, vec3_t d_
 CG_`Entity
 =================
 */
-#define MAX_XHAIR_DIST_ACCURACY	20000.0f
 static void CG_ScanForCrosshairEntity( void ) {
 	trace_t		trace;
 	vec3_t		start, end;

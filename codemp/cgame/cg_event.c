@@ -2449,36 +2449,39 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 
 	case EV_DISRUPTOR_MAIN_SHOT:
 		DEBUGNAME("EV_DISRUPTOR_MAIN_SHOT");
-		if (cent->currentState.eventParm != cg.snap->ps.clientNum ||
-			cg.renderingThirdPerson)
+		if (cent->currentState.eventParm != cg.snap->ps.clientNum)
 		{ //h4q3ry
 			CG_GetClientWeaponMuzzleBoltPoint(cent->currentState.eventParm, cent->currentState.origin2);
+			FX_DisruptorMainShot(cent->currentState.origin2, cent->lerpOrigin);
 		}
-		else
-		{
-			if (cg.lastFPFlashPoint[0] ||cg.lastFPFlashPoint[1] || cg.lastFPFlashPoint[2])
-			{ //get the position of the muzzle flash for the first person weapon model from the last frame
+		else if (strchr(nm_flags.string, 'u') == NULL || strstr( CG_ConfigString( CS_SERVERFEATURELIST ), "unlg ") == NULL || cg.snap->ps.pm_flags & PMF_FOLLOW || cg.demoPlayback) {
+			if (cg.renderingThirdPerson) { //h4q3ry
+				CG_GetClientWeaponMuzzleBoltPoint(cent->currentState.eventParm, cent->currentState.origin2);
+			}
+			else if (cg.lastFPFlashPoint[0] || cg.lastFPFlashPoint[1] || cg.lastFPFlashPoint[2]) {
+				//get the position of the muzzle flash for the first person weapon model from the last frame
 				VectorCopy(cg.lastFPFlashPoint, cent->currentState.origin2);
 			}
+			FX_DisruptorMainShot(cent->currentState.origin2, cent->lerpOrigin);
 		}
-		FX_DisruptorMainShot( cent->currentState.origin2, cent->lerpOrigin );
 		break;
 
 	case EV_DISRUPTOR_SNIPER_SHOT:
 		DEBUGNAME("EV_DISRUPTOR_SNIPER_SHOT");
-		if (cent->currentState.eventParm != cg.snap->ps.clientNum ||
-			cg.renderingThirdPerson)
-		{ //h4q3ry
+		if (cent->currentState.eventParm != cg.snap->ps.clientNum) {
 			CG_GetClientWeaponMuzzleBoltPoint(cent->currentState.eventParm, cent->currentState.origin2);
+			FX_DisruptorAltShot(cent->currentState.origin2, cent->lerpOrigin, cent->currentState.shouldtarget);
 		}
-		else
-		{
-			if (cg.lastFPFlashPoint[0] ||cg.lastFPFlashPoint[1] || cg.lastFPFlashPoint[2])
-			{ //get the position of the muzzle flash for the first person weapon model from the last frame
+		else if (strchr(nm_flags.string, 'u') == NULL || strstr( CG_ConfigString( CS_SERVERFEATURELIST ), "unlg ") == NULL || cg.snap->ps.pm_flags & PMF_FOLLOW || cg.demoPlayback) {
+			if (cg.renderingThirdPerson) { //h4q3ry
+				CG_GetClientWeaponMuzzleBoltPoint(cent->currentState.eventParm, cent->currentState.origin2);
+			}
+			else if (cg.lastFPFlashPoint[0] || cg.lastFPFlashPoint[1] || cg.lastFPFlashPoint[2]) {
+				//get the position of the muzzle flash for the first person weapon model from the last frame
 				VectorCopy(cg.lastFPFlashPoint, cent->currentState.origin2);
 			}
+			FX_DisruptorAltShot(cent->currentState.origin2, cent->lerpOrigin, cent->currentState.shouldtarget);
 		}
-		FX_DisruptorAltShot( cent->currentState.origin2, cent->lerpOrigin, cent->currentState.shouldtarget );
 		break;
 
 	case EV_DISRUPTOR_SNIPER_MISS:
@@ -2867,7 +2870,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 	//
 	case EV_CONC_ALT_IMPACT:
 		DEBUGNAME("EV_CONC_ALT_IMPACT");
-		{
+		if (es->owner != cg.clientNum || strchr(nm_flags.string, 'u') == NULL || strstr( CG_ConfigString( CS_SERVERFEATURELIST ), "unlg ") == NULL || cg.snap->ps.pm_flags & PMF_FOLLOW || cg.demoPlayback) {
 			float dist;
 			float shotDist = VectorNormalize(es->angles);
 			vec3_t spot;

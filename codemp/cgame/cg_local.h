@@ -51,6 +51,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define	WEAPON_SELECT_TIME	1400
 #define	ITEM_SCALEUP_TIME	1000
 
+#define MAX_XHAIR_DIST_ACCURACY	20000.0f
+
 // Zoom vars
 #define	ZOOM_TIME			150		// not currently used?
 #define MAX_ZOOM_FOV		3.0f
