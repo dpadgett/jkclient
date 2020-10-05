@@ -5908,7 +5908,7 @@ static void CG_DrawHolocronIcons(void)
 	}
 }
 
-static qboolean CG_IsDurationPower(int power)
+qboolean CG_IsDurationPower(int power)
 {
 	if (power == FP_HEAL ||
 		power == FP_SPEED ||
@@ -5954,6 +5954,9 @@ static void CG_DrawActivePowers(void)
 			CG_IsDurationPower(forcePowerSorted[i]))
 		{
 			CG_DrawPic( startx, starty, endx, endy, cgs.media.forcePowerIcons[forcePowerSorted[i]]);
+			if (cg_drawForceTimer.integer) {
+				CG_DrawScaledProportionalString(startx + (endx / 2), starty + endy + 2 - (BIGCHAR_HEIGHT / 2), va("%i", (cg.forcePowersEndTime[forcePowerSorted[i]] - (cg.time - cgs.levelStartTime)) / 1000), UI_CENTER | UI_BIGFONT | UI_DROPSHADOW, colorTable[CT_MDGREY], 0.7f);
+			}
 			startx += (icon_size+2); //+2 for spacing
 			if ((startx+icon_size) >= SCREEN_WIDTH-80)
 			{
@@ -5969,6 +5972,9 @@ static void CG_DrawActivePowers(void)
 	if (cg.snap->ps.fd.forceRageRecoveryTime > cg.time)
 	{
 		CG_DrawPic( startx, starty, endx, endy, cgs.media.rageRecShader);
+		if (cg_drawForceTimer.integer) {
+			CG_DrawScaledProportionalString(startx + (endx / 2), starty + endy + 2 - (BIGCHAR_HEIGHT / 2), va("%i", (cg.snap->ps.fd.forceRageRecoveryTime - cg.time) / 1000), UI_CENTER | UI_BIGFONT | UI_DROPSHADOW, colorTable[CT_MDGREY], 0.7f);
+		}
 	}
 }
 

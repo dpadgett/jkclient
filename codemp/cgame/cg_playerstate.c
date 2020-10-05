@@ -496,6 +496,38 @@ void CG_CheckLocalSounds( playerState_t *ps, playerState_t *ops ) {
 	}
 }
 
+static int CG_ForcePowerDuration(int power) {
+	if (strlen(forcepowers.string) < 22) return 0;
+	int rank = forcepowers.string[4 + power] - '0';
+	if (rank < 1 || rank > 3) return 0;
+	switch (power) {
+	case FP_SPEED:
+		if (rank == 1) return 10000;
+		if (rank == 2) return 15000;
+		if (rank == 3) return 20000;
+		return 0;
+	case FP_TELEPATHY:
+		if (rank == 1) return 20000;
+		if (rank == 2) return 25000;
+		if (rank == 3) return 30000;
+		return 0;
+	case FP_RAGE:
+		if (rank == 1) return 8000;
+		if (rank == 2) return 14000;
+		if (rank == 3) return 20000;
+		return 0;
+	case FP_PROTECT:
+	case FP_ABSORB:
+		return 20000;
+	case FP_SEE:
+		if (rank == 1) return 10000;
+		if (rank == 2) return 20000;
+		if (rank == 3) return 30000;
+		return 0;
+	}
+	return 0;
+}
+
 /*
 ===============
 CG_TransitionPlayerState
@@ -503,11 +535,20 @@ CG_TransitionPlayerState
 ===============
 */
 void CG_TransitionPlayerState( playerState_t *ps, playerState_t *ops ) {
+	int fp;
+
 	// check for changing follow mode
 	if ( ps->clientNum != ops->clientNum ) {
 		cg.thisFrameTeleport = qtrue;
 		// make sure we don't get any unwanted transition effects
 		*ops = *ps;
+	}
+
+	// update force power timeouts
+	for (fp = 0; fp < NUM_FORCE_POWERS; fp++) {
+		if (!(ops->fd.forcePowersActive & (1 << fp)) && (ps->fd.forcePowersActive & (1 << fp)) && CG_IsDurationPower(fp)) {
+			cg.forcePowersEndTime[fp] = CG_ForcePowerDuration(fp) + (cg.snap->serverTime - cgs.levelStartTime);
+		}
 	}
 
 	// damage events (player is getting wounded)

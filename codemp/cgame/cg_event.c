@@ -1929,7 +1929,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 			}
 
 			if ( item->giType == IT_POWERUP && cg_entities[es->eventParm].currentState.modelindex2 != 1 ) {
-				cg.powerupRespawnTime[item->giTag] = (cg.time - cgs.levelStartTime) + 120 * 1000;
+				cg.powerupRespawnTime[item->giTag] = (cg.snap->serverTime - cgs.levelStartTime) + 120 * 1000;
 			}
 		}
 		break;

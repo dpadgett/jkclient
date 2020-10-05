@@ -1037,6 +1037,7 @@ Ghoul2 Insert End
 	char spawnVarChars[MAX_SPAWN_VARS_CHARS];
 
 	long				powerupRespawnTime[MAX_POWERUPS];
+	long				forcePowersEndTime[NUM_FORCE_POWERS];
 } cg_t;
 
 #define MAX_TICS	14
