@@ -54,6 +54,37 @@ static void CG_TeamOverlayChange( void ) {
 }
 
 
+//Strafehelper colors
+extern void CG_ClearThirdPersonDamp(void);
+static void CG_StrafeHelperActiveColorChange(void) {
+	int i;
+	if (sscanf(cg_strafeHelperActiveColor.string, "%f %f %f %f", &cg.strafeHelperActiveColor[0], &cg.strafeHelperActiveColor[1], &cg.strafeHelperActiveColor[2], &cg.strafeHelperActiveColor[3]) != 4) {
+		cg.strafeHelperActiveColor[0] = 0;
+		cg.strafeHelperActiveColor[1] = 255;
+		cg.strafeHelperActiveColor[2] = 0;
+		cg.strafeHelperActiveColor[3] = 200;
+	}
+
+	for (i = 0; i < 4; i++) {
+		if (cg.strafeHelperActiveColor[i] < 0)
+			cg.strafeHelperActiveColor[i] = 0;
+		else if (cg.strafeHelperActiveColor[i] > 255)
+			cg.strafeHelperActiveColor[i] = 255;
+	}
+
+	trap->Cvar_Set("ui_sha_r", va("%f", cg.strafeHelperActiveColor[0]));
+	trap->Cvar_Set("ui_sha_g", va("%f", cg.strafeHelperActiveColor[1]));
+	trap->Cvar_Set("ui_sha_b", va("%f", cg.strafeHelperActiveColor[2]));
+	trap->Cvar_Set("ui_sha_a", va("%f", cg.strafeHelperActiveColor[3]));
+
+	cg.strafeHelperActiveColor[0] /= 255.0f;
+	cg.strafeHelperActiveColor[1] /= 255.0f;
+	cg.strafeHelperActiveColor[2] /= 255.0f;
+	cg.strafeHelperActiveColor[3] /= 255.0f;
+
+	//Com_Printf("New color is %f, %f, %f, %f\n", cg.strafeHelperActiveColor[0], cg.strafeHelperActiveColor[1], cg.strafeHelperActiveColor[2], cg.strafeHelperActiveColor[3]);
+}
+
 //
 // Cvar table
 //

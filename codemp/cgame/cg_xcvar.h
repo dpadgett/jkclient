@@ -215,4 +215,17 @@ XCVAR_DEF( cg_drawForceTimer,			"0",					NULL,					CVAR_ARCHIVE )
 //XCVAR_DEF( cg_unlagged,				  	"0", NULL, CVAR_ARCHIVE )
 XCVAR_DEF( nm_ver,				  	"1.5.6", NULL, CVAR_USERINFO )
 XCVAR_DEF( nm_flags,				  	"u", NULL, CVAR_USERINFO )
+
+//Strafehelper
+XCVAR_DEF( cg_strafeHelper,						"3008", CG_ClearThirdPersonDamp,			CVAR_ARCHIVE )
+XCVAR_DEF( cg_strafeHelper_FPS,					"0",	NULL,								CVAR_ARCHIVE ) //fats _ syntax to follow smod ;s
+XCVAR_DEF( cg_strafeHelperOffset,				"75",	NULL,								CVAR_ARCHIVE )
+XCVAR_DEF( cg_strafeHelperLineWidth,			"1",	NULL,								CVAR_ARCHIVE )
+XCVAR_DEF( cg_strafeHelperPrecision,			"256",	NULL,								CVAR_ARCHIVE )
+XCVAR_DEF( cg_strafeHelperCutoff,				"0",	NULL,								CVAR_ARCHIVE )
+XCVAR_DEF( cg_strafeHelperActiveColor,	"0 255 0 200",	CG_StrafeHelperActiveColorChange,	CVAR_ARCHIVE )
+XCVAR_DEF( cg_strafeHelperInactiveAlpha,		"200",	NULL,								CVAR_ARCHIVE )
+
+XCVAR_DEF( cg_thirdPersonCrosshairCenter,		"0",					NULL,					CVAR_NONE ) //1 is old third person static crosshair behavior
+
 #undef XCVAR_DEF

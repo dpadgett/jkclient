@@ -1038,6 +1038,8 @@ Ghoul2 Insert End
 
 	long				powerupRespawnTime[MAX_POWERUPS];
 	long				forcePowersEndTime[NUM_FORCE_POWERS];
+	vec4_t				strafeHelperActiveColor;
+	float				currentSpeed;
 } cg_t;
 
 #define MAX_TICS	14

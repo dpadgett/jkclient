@@ -427,6 +427,26 @@ static void CG_ResetThirdPersonViewDamp(void)
 	cameraStiffFactor = 0.0f;
 }
 
+void CG_ClearThirdPersonDamp(void)
+{//workaround for camera jerk when clearing camera damp vectors, should probably be refactored into, if not fixed in the actual ThirdPersonDamp code
+	vec3_t oldLoc, oldTarget;
+	if (!cg.snap)
+		return;
+
+	if (cl_paused.integer)
+		return;
+
+	VectorCopy(cameraIdealLoc, oldLoc);
+	VectorCopy(cameraIdealTarget, oldTarget);
+
+	CG_ResetThirdPersonViewDamp();
+
+	VectorCopy(oldLoc, cameraIdealLoc);
+	VectorCopy(oldTarget, cameraIdealTarget);
+
+	cameraLastFrame = cg.predictedPlayerState.commandTime;
+}
+
 // This is called every frame.
 static void CG_UpdateThirdPersonTargetDamp(void)
 {
@@ -443,7 +463,7 @@ static void CG_UpdateThirdPersonTargetDamp(void)
 	{//hyperspacing, no damp
 		VectorCopy(cameraIdealTarget, cameraCurTarget);
 	}
-	else if (cg_thirdPersonTargetDamp.value>=1.0||cg.thisFrameTeleport||cg.predictedPlayerState.m_iVehicleNum)
+	else if (cg_thirdPersonTargetDamp.value>=1.0f||cg.thisFrameTeleport||cg.predictedPlayerState.m_iVehicleNum||cg_strafeHelper.integer & (1<<0)||cg_strafeHelper.integer & (1<<1)||cg_strafeHelper.integer & (1<<2)||cg_strafeHelper.integer & (1<<3)||cg_strafeHelper.integer & (1<<13))
 	{	// No damping.
 		VectorCopy(cameraIdealTarget, cameraCurTarget);
 	}
@@ -508,13 +528,13 @@ static void CG_UpdateThirdPersonCameraDamp(void)
 		float pitch;
 		float dFactor;
 
-		if (!cg.predictedPlayerState.m_iVehicleNum)
+		if (cg.predictedPlayerState.m_iVehicleNum||cg_strafeHelper.integer & (1<<0)||cg_strafeHelper.integer & (1<<1)||cg_strafeHelper.integer & (1<<2)||cg_strafeHelper.integer & (1<<3)||cg_strafeHelper.integer & (1<<13))
 		{
-			dFactor = cg_thirdPersonCameraDamp.value;
+			dFactor = 1.0f;
 		}
 		else
 		{
-			dFactor = 1.0f;
+			dFactor = cg_thirdPersonCameraDamp.value;
 		}
 
 		// Note that the camera pitch has already been capped off to 89.

@@ -1963,7 +1963,13 @@ void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 			vec3_t muzzle, forward, right, up, endPoint;
 			trace_t tr;
 			VectorCopy(cg.predictedPlayerState.origin, muzzle);
-			muzzle[2] += cg.predictedPlayerState.viewheight;
+	int anim = cg_entities[cg.predictedPlayerState.clientNum].currentState.legsAnim;
+	if ( anim == BOTH_CROUCH1WALK || anim == BOTH_CROUCH1IDLE ) {
+		muzzle[2] += CROUCH_VIEWHEIGHT;
+	} else {
+		muzzle[2] += DEFAULT_VIEWHEIGHT;
+	}
+			//muzzle[2] += cg.predictedPlayerState.viewheight;
 			AngleVectors(cg.predictedPlayerState.viewangles, forward, right, up);
 			VectorMA(muzzle, 14, forward, muzzle);
 			VectorMA(muzzle, 16384, forward, endPoint);
