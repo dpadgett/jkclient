@@ -345,6 +345,9 @@ typedef struct console_s {
 	float	xadjust;		// for wide aspect screens
 	float	yadjust;		// for wide aspect screens
 
+	int		vidWidth;
+	int		vidHeight;
+
 	float	displayFrac;	// aproaches finalFrac at scr_conspeed
 	float	finalFrac;		// 0.0 to 1.0 lines of console to display
 
