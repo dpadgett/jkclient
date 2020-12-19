@@ -1056,12 +1056,16 @@ void CG_FixDemo_f(void)
 {
 	char myDemoName[MAX_STRING_CHARS];
 	char path[MAX_QPATH];
+	char homepath[MAX_CVAR_VALUE_STRING];
+	trap->Cvar_VariableStringBuffer( "cg_demoName", myDemoName, sizeof( myDemoName ) );
+	if ( myDemoName[0] == '\0' ) return;
 	trap->Cvar_VariableStringBuffer( "fs_game", path, sizeof( path ) );
 	if( !*path ) Q_strncpyz( path, "base", sizeof( path ) );
-	trap->Cvar_VariableStringBuffer( "cg_demoName", myDemoName, sizeof( myDemoName ) );
+	trap->Cvar_VariableStringBuffer( "fs_homepath", homepath, sizeof( homepath ) );
+	if ( homepath[0] != '\0' ) Q_strcat( homepath, sizeof( homepath ), "\\" );
 	if( *cg_demoData.string )
-		FS_CopyFile( va( "%s/demos/%s.dm_26", path, myDemoName ), va( "%s/demos/%s.dm_26", path, cg_demoData.string ) );
-	FS_Remove( va( "%s/demos/%s.dm_26", path, myDemoName ) );
+		FS_CopyFile( va( "%s%s/demos/%s.dm_26", homepath, path, myDemoName ), va( "%s%s/demos/%s - %s.dm_26", homepath, path, cg_demoData.string, myDemoName ) );
+	FS_Remove( va( "%s%s/demos/%s.dm_26", homepath, path, myDemoName ) );
 	trap->Cvar_Set( "cg_demoData", "" );
 	Com_Printf( "Demo name fixed.\n" );
 }
