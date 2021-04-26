@@ -42,9 +42,17 @@ int PASSFLOAT( float x ) {
 }
 
 void trap_Print( const char *fmt ) {
+	if ( Q_syscall == ( intptr_t( QDECL* )( intptr_t, ... ) ) -1 ) {
+		Com_Printf( fmt );
+		return;
+	}
 	Q_syscall( CG_PRINT, fmt );
 }
 NORETURN void trap_Error( const char *fmt ) {
+	if ( Q_syscall == ( intptr_t( QDECL* )( intptr_t, ... ) ) - 1 ) {
+		Com_Error( ERR_FATAL, fmt );
+		return;
+	}
 	Q_syscall( CG_ERROR, fmt );
 	exit(1);
 }

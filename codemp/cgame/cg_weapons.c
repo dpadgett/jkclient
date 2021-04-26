@@ -1959,7 +1959,7 @@ void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 
 	if (!cg.demoPlayback && !(cg.snap->ps.pm_flags & PMF_FOLLOW) && strstr( CG_ConfigString( CS_SERVERFEATURELIST ), "unlg ") != NULL && strchr(nm_flags.string, 'u') != NULL && cent->currentState.number == cg.clientNum) {
 		if (ent->weapon == WP_DISRUPTOR) { // predicted disruptor fire
-			CG_Printf("Rendering unlagged disruptor fire\n");
+			Com_Printf("Rendering unlagged disruptor fire\n");
 			vec3_t muzzle, forward, right, up, endPoint;
 			trace_t tr;
 			VectorCopy(cg.predictedPlayerState.origin, muzzle);
@@ -1973,7 +1973,7 @@ void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 			AngleVectors(cg.predictedPlayerState.viewangles, forward, right, up);
 			VectorMA(muzzle, 14, forward, muzzle);
 			VectorMA(muzzle, 16384, forward, endPoint);
-			CG_G2Trace(&tr, muzzle, vec3_origin, vec3_origin, endPoint, cg.clientNum, MASK_SHOT, 0);
+			CG_G2Trace(&tr, muzzle, vec3_origin, vec3_origin, endPoint, cg.clientNum, MASK_SHOT);
 			CG_GetClientWeaponMuzzleBoltPoint(cg.clientNum, muzzle); // actual muzzle point, solely for the visual effects
 
 			if (altFire) {
@@ -1985,7 +1985,7 @@ void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 			}
 		}
 		else if (ent->weapon == WP_CONCUSSION && altFire) { // predicted alt conc fire
-			CG_Printf("Rendering unlagged conc altfire\n");
+			Com_Printf("Rendering unlagged conc altfire\n");
 			vec3_t muzzle, forward, right, up, endPoint;
 			trace_t tr;
 
@@ -1993,7 +1993,7 @@ void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 			CG_CalcMuzzlePoint(cg.predictedPlayerState.clientNum, muzzle);
 
 			VectorMA(muzzle, 16384, forward, endPoint);
-			CG_G2Trace(&tr, muzzle, vec3_origin, vec3_origin, endPoint, cg.clientNum, MASK_SHOT, 0);
+			CG_G2Trace(&tr, muzzle, vec3_origin, vec3_origin, endPoint, cg.clientNum, MASK_SHOT);
 
 			float dist;
 			vec3_t angles;
@@ -2005,7 +2005,7 @@ void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 			for (dist = 0.0f; dist < shotDist; dist += 64.0f)
 			{ //one effect would be.. a whole lot better
 				VectorMA(muzzle, dist, angles, spot);
-				trap_FX_PlayEffectID(cgs.effects.mConcussionAltRing, spot, forward, -1, -1);
+				trap->FX_PlayEffectID(cgs.effects.mConcussionAltRing, spot, forward, -1, -1, qfalse);
 			}
 
 			CG_MissileHitWall(WP_CONCUSSION, cg.clientNum, tr.endpos, tr.plane.normal, IMPACTSOUND_DEFAULT, qtrue, 0);
