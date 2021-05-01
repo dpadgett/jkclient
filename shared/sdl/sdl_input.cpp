@@ -614,7 +614,9 @@ void IN_Init( void *windowData )
 
 	SDL_StartTextInput( );
 
-	mouseAvailable = (qboolean)( in_mouse->value != 0 );
+	SDL_SetHint( "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS", "1" );
+
+		mouseAvailable = (qboolean)( in_mouse->value != 0 );
 	if ( in_mouse->integer == 2 ) {
 		Com_DPrintf( "Not using raw mouse input\n" );
 		SDL_SetHint( "SDL_MOUSE_RELATIVE_MODE_WARP", "1" );
