@@ -2412,6 +2412,16 @@ void CG_TransitionPermanent(void)
 Ghoul2 Insert End
 */
 
+static cgameExport_t cge = { 0 }, swappableCge = { 0 }, initialCge = { 0 };
+
+static void UseRealCGE() {
+	swappableCge = cge;
+}
+
+static void UseFakeCGE() {
+	swappableCge = initialCge;
+}
+
 extern playerState_t *cgSendPS[MAX_GENTITIES]; //is not MAX_CLIENTS because NPCs exceed MAX_CLIENTS
 void CG_PmoveClientPointerUpdate();
 
@@ -2419,6 +2429,47 @@ void WP_SaberLoadParms( void );
 void BG_VehicleLoadParms( void );
 
 qboolean fakeMap = qfalse;
+
+struct {
+	int serverMessageNum;
+	int serverCommandSequence;
+	int clientNum;
+} cgInitArgs = { 0 };
+
+void CG_DrawActiveFrameWhenDownloading( int serverTime, stereoFrame_t stereoView, qboolean demoPlayback ) {
+	cg.time = serverTime;
+	cgDC.realTime = cg.time;
+	cg.demoPlayback = demoPlayback;
+	// update cvars
+	CG_UpdateCvars();
+	/*if(cg.svCvarCount > 0) {
+		if(CG_BackupConfig()) {
+			CG_ManageSVCVars();
+		}
+		CG_RestoreConfig();
+	}*/
+	CG_DrawInformation();
+	if ( cgs.is_downloading == 2 ) {
+		//			CG_InitThreads();
+		//			ListFiles();
+		//			cgs.is_downloading = 1;
+		Com_Printf( "Download completed successfully.\n" );
+		cgs.is_downloading = 1;
+		trap->Cvar_Set( "fs_game", "base" );
+		//trap_SendConsoleCommand("donedl\n");
+		trap->SendClientCommand( "donedl" );
+		//trap_SendConsoleCommand("reconnect\n");
+	}
+	else if ( cgs.is_downloading == 3 ) {
+		extern int curl_res;
+		Com_Printf( "There was a problem retrieving files referenced by the server - cURL result %d.  Attempting load anyways...\n", curl_res );
+		cgs.is_downloading = 0;
+		//			trap_Cvar_Set("fs_game", "base");
+		//	        trap_SendConsoleCommand("donedl\n");
+		UseRealCGE();
+		CG_Init( cgInitArgs.serverMessageNum, cgInitArgs.serverCommandSequence, cgInitArgs.clientNum );
+	}
+}
 
 /*
 =================
@@ -2434,6 +2485,19 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum )
 	char buf[64];
 	const char	*s;
 	int i = 0;
+
+	memset( &cgs, 0, sizeof( cgs ) );
+
+#ifdef WEB_DOWNLOAD
+	CG_InitThreads();
+	if ( ListFiles() != 0 ) {
+		cgInitArgs.serverMessageNum = serverMessageNum;
+		cgInitArgs.serverCommandSequence = serverCommandSequence;
+		cgInitArgs.clientNum = clientNum;
+		UseFakeCGE();
+		return;
+	}
+#endif
 
 	BG_InitAnimsets(); //clear it out
 
@@ -2747,7 +2811,7 @@ void CG_Shutdown( void )
 	if ( !cg_noAutoDemo.integer )
 	{
 		extern void CG_FixDemo_f(void);
-		trap->SendConsoleCommand( "stoprecord;fixdemo;" );
+		trap->SendConsoleCommand( "stoprecord" );
 		CG_FixDemo_f();
 	}
 }
@@ -2991,10 +3055,13 @@ GetModuleAPI
 
 cgameImport_t *trap = NULL;
 
+static intptr_t LogAndNoOp() {
+	Com_Printf( "Ignoring extra cge function call\n" );
+	return 0;
+}
+
 Q_EXPORT cgameExport_t* QDECL GetModuleAPI( int apiVersion, cgameImport_t *import )
 {
-	static cgameExport_t cge = {0};
-
 	assert( import );
 	trap = import;
 	Com_Printf	= trap->Print;
@@ -3035,7 +3102,38 @@ Q_EXPORT cgameExport_t* QDECL GetModuleAPI( int apiVersion, cgameImport_t *impor
 	cge.MiscEnt					= CG_MiscEnt;
 	cge.CameraShake				= CG_FX_CameraShake;
 
-	return &cge;
+	initialCge = cge;
+	initialCge.Init = CG_Init;
+	initialCge.Shutdown = LogAndNoOp;
+	initialCge.ConsoleCommand = LogAndNoOp;
+	initialCge.DrawActiveFrame = CG_DrawActiveFrame;
+	initialCge.CrosshairPlayer = LogAndNoOp;
+	initialCge.LastAttacker = LogAndNoOp;
+	initialCge.KeyEvent = LogAndNoOp;
+	initialCge.MouseEvent = LogAndNoOp;
+	initialCge.EventHandling = LogAndNoOp;
+	initialCge.PointContents = LogAndNoOp;
+	initialCge.GetLerpOrigin = LogAndNoOp;
+	initialCge.GetLerpData = LogAndNoOp;
+	initialCge.Trace = LogAndNoOp;
+	initialCge.G2Trace = LogAndNoOp;
+	initialCge.G2Mark = LogAndNoOp;
+	initialCge.RagCallback = LogAndNoOp;
+	initialCge.IncomingConsoleCommand = LogAndNoOp;
+	initialCge.NoUseableForce = LogAndNoOp;
+	initialCge.GetOrigin = LogAndNoOp;
+	initialCge.GetAngles = LogAndNoOp;
+	initialCge.GetOriginTrajectory = LogAndNoOp;
+	initialCge.GetAngleTrajectory = LogAndNoOp;
+	initialCge.ROFF_NotetrackCallback = LogAndNoOp;
+	initialCge.MapChange = LogAndNoOp;
+	initialCge.AutomapInput = LogAndNoOp;
+	initialCge.MiscEnt = LogAndNoOp;
+	initialCge.CameraShake = LogAndNoOp;
+
+	initialCge.DrawActiveFrame = CG_DrawActiveFrameWhenDownloading;
+	swappableCge = cge;
+	return &swappableCge;
 }
 
 /*
@@ -3050,52 +3148,15 @@ Q_EXPORT intptr_t vmMain( int command, intptr_t arg0, intptr_t arg1, intptr_t ar
 	intptr_t arg5, intptr_t arg6, intptr_t arg7, intptr_t arg8, intptr_t arg9, intptr_t arg10, intptr_t arg11 )
 {
 #ifdef WEB_DOWNLOAD
-	static int oa0, oa1, oa2;
-  if ( command == CG_INIT ) {
-    memset( &cgs, 0, sizeof( cgs ) );
-  }
 	if ( cgs.is_downloading ) {
 		if ( command == CG_DRAW_ACTIVE_FRAME ) {
-			cg.time = arg0;
-			cgDC.realTime = cg.time;
-			cg.demoPlayback = (qboolean)arg2;
-			// update cvars
-			CG_UpdateCvars();
-			/*if(cg.svCvarCount > 0) {
-				if(CG_BackupConfig()) {
-					CG_ManageSVCVars();
-				}
-				CG_RestoreConfig();
-			}*/
-			CG_DrawInformation();
-		}
-		if ( cgs.is_downloading == 2 ) {
-//			CG_InitThreads();
-//			ListFiles();
-//			cgs.is_downloading = 1;
-			Com_Printf("Download completed successfully.\n");
-			cgs.is_downloading = 1;
-			trap->Cvar_Set("fs_game", "base");
-	        //trap_SendConsoleCommand("donedl\n");
-	        trap->SendClientCommand("donedl");
-			//trap_SendConsoleCommand("reconnect\n");
-		} else if ( cgs.is_downloading == 3 ) {
-			extern int curl_res;
-			Com_Printf("There was a problem retrieving files referenced by the server - cURL result %d.  Attempting load anyways...\n", curl_res);
-			cgs.is_downloading = 0;
-//			trap_Cvar_Set("fs_game", "base");
-//	        trap_SendConsoleCommand("donedl\n");
-			CG_Init( oa0, oa1, oa2 );
+			CG_DrawActiveFrameWhenDownloading( arg0, arg1, arg2 );
 		}
 		return 0;
 	}
 #endif
 	switch ( command ) {
 	case CG_INIT:
-#ifdef WEB_DOWNLOAD
-		CG_InitThreads();
-		if ( ListFiles() != 0 ) { oa0 = arg0; oa1 = arg1; oa2 = arg2; return -1; }
-#endif
 		CG_Init( arg0, arg1, arg2 );
 		return 0;
 
