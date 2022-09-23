@@ -10170,6 +10170,11 @@ void PM_MoveForKata(usercmd_t *ucmd)
 	}
 }
 
+#ifdef CGAME
+// base_enhanced superman jump support
+extern const char *CG_ConfigString( int index );
+#endif
+
 void PmoveSingle (pmove_t *pmove) {
 	qboolean stiffenedUp = qfalse;
 	float gDist = 0;
@@ -10389,7 +10394,11 @@ void PmoveSingle (pmove_t *pmove) {
 		pm->ps->legsAnim == BOTH_FORCELANDRIGHT1 ||
 		pm->ps->legsAnim == BOTH_FORCELANDLEFT1)
 	{ //can't move while in a force land
-		stiffenedUp = qtrue;
+#ifdef CGAME
+		// base_enhanced superman jump support
+		if (!(strstr( CG_ConfigString( CS_SERVERFEATURELIST ), "fjal ") != NULL))
+#endif
+			stiffenedUp = qtrue;
 	}
 
 	if ( pm->ps->saberMove == LS_A_LUNGE )
